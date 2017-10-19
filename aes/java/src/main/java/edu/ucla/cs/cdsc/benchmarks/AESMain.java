@@ -1,5 +1,6 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
+import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,8 +26,10 @@ public class AESMain {
 
         String inputData = "";
         try {
+            FileInputStream inputStream = new FileInputStream(inputFile);
             Path inputPath = Paths.get(inputFile);
-            byte[] bytes = Files.readAllBytes(inputPath);
+            byte[] bytes = new byte[(int) size];
+            inputStream.read(bytes, 0, (int) size);
             inputData = new String(bytes);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
