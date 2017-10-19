@@ -70,7 +70,7 @@ public class AESPipeline extends Pipeline {
                     AESPackObject inputObj = new AESPackObject(inputData, (long) i*TILE_SIZE);
                     aesPackQueue.put(inputObj);
                 }
-                aesPackQueue.put(null);
+                aesPackQueue.put(new AESPackObject(null, -1));
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
             }
@@ -83,9 +83,9 @@ public class AESPipeline extends Pipeline {
                 BlockingQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 while (!done) {
                     AESPackObject obj = (AESPackObject) AESPipeline.getPackQueue().take();
-                    if (obj == null) {
+                    if (obj.getData() == null && obj.getStartIdx() == -1) {
                         done = true;
-                        aesSendQueue.put(null);
+                        aesSendQueue.put(new AESSendObject(null));
                     }
                     else {
                         aesSendQueue.put(pack(obj));
@@ -102,7 +102,7 @@ public class AESPipeline extends Pipeline {
                 boolean done = false;
                 while (!done) {
                     AESSendObject obj = (AESSendObject) AESPipeline.getSendQueue().take();
-                    if (obj == null) {
+                    if (obj.getData() == null) {
                         done = true;
                     }
                     else {
@@ -122,7 +122,7 @@ public class AESPipeline extends Pipeline {
                 for (int i=0; i<numOfTiles; i++) {
                     aesRecvQueue.put(receive(server));
                 }
-                aesRecvQueue.put(null);
+                aesRecvQueue.put(new AESRecvObject(null));
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
             }
@@ -135,9 +135,9 @@ public class AESPipeline extends Pipeline {
                 BlockingQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 while (!done) {
                     AESRecvObject obj = (AESRecvObject) AESPipeline.getRecvQueue().take();
-                    if (obj == null) {
+                    if (obj.getData() == null) {
                         done = true;
-                        aesUnpackQueue.put(null);
+                        aesUnpackQueue.put(new AESUnpackObject(null));
                     }
                     else {
                         aesUnpackQueue.put(unpack(obj));
@@ -155,7 +155,7 @@ public class AESPipeline extends Pipeline {
                 boolean done = false;
                 while (!done) {
                     AESUnpackObject obj = (AESUnpackObject) AESPipeline.getUnpackQueue().take();
-                    if (obj == null) {
+                    if (obj.getData() == null) {
                         done = true;
                     }
                     else {
