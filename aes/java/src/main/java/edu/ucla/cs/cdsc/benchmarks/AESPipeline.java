@@ -166,7 +166,7 @@ public class AESPipeline extends Pipeline {
                 logger.severe("Caught exception: " + e);
             }
         };
-        new Thread(sender).start();
+        new Thread(merger).start();
 
         return stringBuilder.toString();
     }
