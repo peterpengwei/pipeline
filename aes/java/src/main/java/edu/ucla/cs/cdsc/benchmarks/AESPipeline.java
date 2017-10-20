@@ -32,9 +32,10 @@ public class AESPipeline extends Pipeline {
     @Override
     public void send(SendObject obj) {
         try (Socket socket = new Socket("localhost", 6070)) {
-	    byte[] data = ((AESSendObject) obj).getData();
-	    logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
-	    socket.getOutputStream().write(data, 0, TILE_SIZE);
+            byte[] data = ((AESSendObject) obj).getData();
+            logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
+            socket.getOutputStream().write(data, 0, TILE_SIZE);
+            socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -46,7 +47,7 @@ public class AESPipeline extends Pipeline {
         try (Socket incoming = server.accept()) {
             byte[] data = new byte[TILE_SIZE];
             incoming.getInputStream().read(data, 0, TILE_SIZE);
-	    logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
+            logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
@@ -68,8 +69,8 @@ public class AESPipeline extends Pipeline {
             try {
                 int numOfTiles = (int) (size / TILE_SIZE);
                 BlockingQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
-                for (int i=0; i<numOfTiles; i++) {
-                    AESPackObject inputObj = new AESPackObject(inputData, (long) i*TILE_SIZE);
+                for (int i = 0; i < numOfTiles; i++) {
+                    AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
                     aesPackQueue.put(inputObj);
                 }
                 aesPackQueue.put(new AESPackObject(null, -1));
@@ -89,8 +90,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null && obj.getStartIdx() == -1) {
                         done = true;
                         aesSendQueue.put(new AESSendObject(null));
-                    }
-                    else {
+                    } else {
                         aesSendQueue.put(pack(obj));
                     }
                 }
@@ -108,8 +108,7 @@ public class AESPipeline extends Pipeline {
                     AESSendObject obj = (AESSendObject) AESPipeline.getSendQueue().take();
                     if (obj.getData() == null) {
                         done = true;
-                    }
-                    else {
+                    } else {
                         send(obj);
                     }
                 }
@@ -124,7 +123,7 @@ public class AESPipeline extends Pipeline {
             try (ServerSocket server = new ServerSocket(9520)) {
                 int numOfTiles = (int) (size / TILE_SIZE);
                 BlockingQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
-                for (int i=0; i<numOfTiles; i++) {
+                for (int i = 0; i < numOfTiles; i++) {
                     aesRecvQueue.put(receive(server));
                 }
                 aesRecvQueue.put(new AESRecvObject(null));
@@ -144,8 +143,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                         aesUnpackQueue.put(new AESUnpackObject(null));
-                    }
-                    else {
+                    } else {
                         aesUnpackQueue.put(unpack(obj));
                     }
                 }
@@ -164,8 +162,7 @@ public class AESPipeline extends Pipeline {
                     AESUnpackObject obj = (AESUnpackObject) AESPipeline.getUnpackQueue().take();
                     if (obj.getData() == null) {
                         done = true;
-                    }
-                    else {
+                    } else {
                         stringBuilder.append(obj.getData());
                     }
                 }
