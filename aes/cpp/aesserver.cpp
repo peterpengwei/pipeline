@@ -22,11 +22,11 @@ void gather(void) {
         exit(EXIT_FAILURE);
     }
 
-//    int opt = 1;
-//    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-//        std::cerr << "Setsockopt failed" << std::endl;
-//        exit(EXIT_FAILURE);
-//    }
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        std::cerr << "Setsockopt failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     sockaddr_in address;
     bzero(&address, sizeof(address));
@@ -53,7 +53,7 @@ void gather(void) {
         else {
             char* buffer = new char[TILE];
             read(instance, buffer, TILE);
-	    close(instance);
+	    //close(instance);
 	    for (int i=0; i<64; i++) std::cout << buffer[i];
 	    std::cout << std::endl;
             while (!input_queue.push(buffer)) ;
