@@ -6,10 +6,11 @@
 #include <arpa/inet.h>
 #include <cctype>
 #include <string>
+#include <boost/atomic.hpp>
 
 #define PORT 6070
 #define TILE (1 << 20)
-#define COUNT_DOWN (1 << 10)
+#define COUNT_DOWN (1 << 20)
 
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<8> > input_queue;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<8> > output_queue;
@@ -74,7 +75,7 @@ void compute(void) {
 }
 
 void scatter(void) {
-    int count_down = (1 << 5);
+    int count_down = COUNT_DOWN;
     
     sockaddr_in serv_addr;
     bzero(&serv_addr, sizeof(serv_addr));
