@@ -67,9 +67,11 @@ public class AESPipeline extends Pipeline {
             try {
                 int numOfTiles = (int) (size / TILE_SIZE);
                 BlockingQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
-                for (int i = 0; i < numOfTiles; i++) {
-                    AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
-                    aesPackQueue.put(inputObj);
+                for (int j=0; j<64; j++) {
+                    for (int i = 0; i < numOfTiles; i++) {
+                        AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
+                        aesPackQueue.put(inputObj);
+                    }
                 }
                 aesPackQueue.put(new AESPackObject(null, -1));
             } catch (InterruptedException e) {
@@ -121,8 +123,10 @@ public class AESPipeline extends Pipeline {
             try (ServerSocket server = new ServerSocket(9520)) {
                 int numOfTiles = (int) (size / TILE_SIZE);
                 BlockingQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
-                for (int i = 0; i < numOfTiles; i++) {
-                    aesRecvQueue.put(receive(server));
+                for (int j=0; j<64; j++) {
+                    for (int i = 0; i < numOfTiles; i++) {
+                        aesRecvQueue.put(receive(server));
+                    }
                 }
                 aesRecvQueue.put(new AESRecvObject(null));
             } catch (Exception e) {
@@ -156,12 +160,15 @@ public class AESPipeline extends Pipeline {
         Runnable merger = () -> {
             try {
                 boolean done = false;
+                int idx = 0;
                 while (!done) {
                     AESUnpackObject obj = (AESUnpackObject) AESPipeline.getUnpackQueue().take();
                     if (obj.getData() == null) {
                         done = true;
                     } else {
-                        stringBuilder.append(obj.getData());
+                        if (idx % 64 == 0) {
+                            stringBuilder.append(obj.getData());
+                        }
                     }
                 }
             } catch (InterruptedException e) {
