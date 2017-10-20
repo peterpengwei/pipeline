@@ -5,7 +5,6 @@ import edu.ucla.cs.cdsc.pipeline.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
@@ -25,7 +24,7 @@ public class AESPipeline extends Pipeline {
     public SendObject pack(PackObject obj) {
         AESPackObject aesPackObject = (AESPackObject) obj;
         int startIdx = (int) aesPackObject.getStartIdx();
-        int endIdx = startIdx + (int) TILE_SIZE;
+        int endIdx = startIdx + TILE_SIZE;
         return new AESSendObject(aesPackObject.getData().substring(startIdx, endIdx).getBytes());
     }
 
@@ -64,8 +63,6 @@ public class AESPipeline extends Pipeline {
 
     @Override
     public Object execute(Object input) {
-        AtomicInteger numOfPendingRequests = new AtomicInteger(0);
-
         Runnable splitter = () -> {
             try {
                 int numOfTiles = (int) (size / TILE_SIZE);
@@ -110,10 +107,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                     } else {
-                        int num;
-                        while ((num = numOfPendingRequests.get()) >= 16) Thread.sleep(10);
                         send(obj);
-                        numOfPendingRequests.getAndIncrement();
                     }
                 }
             } catch (InterruptedException e) {
@@ -129,7 +123,6 @@ public class AESPipeline extends Pipeline {
                 BlockingQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int i = 0; i < numOfTiles; i++) {
                     aesRecvQueue.put(receive(server));
-                    numOfPendingRequests.getAndDecrement();
                 }
                 aesRecvQueue.put(new AESRecvObject(null));
             } catch (Exception e) {
