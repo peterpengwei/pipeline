@@ -37,6 +37,7 @@ public class AESPipeline extends Pipeline {
 	    socket.getOutputStream().write(data, 0, TILE_SIZE);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
+            e.printStackTrace();
         }
     }
 
@@ -49,6 +50,7 @@ public class AESPipeline extends Pipeline {
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
+            e.printStackTrace();
         } finally {
             return new AESRecvObject(new byte[0]);
         }
@@ -73,6 +75,7 @@ public class AESPipeline extends Pipeline {
                 aesPackQueue.put(new AESPackObject(null, -1));
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(splitter).start();
@@ -93,6 +96,7 @@ public class AESPipeline extends Pipeline {
                 }
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(packer).start();
@@ -111,6 +115,7 @@ public class AESPipeline extends Pipeline {
                 }
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(sender).start();
@@ -125,6 +130,7 @@ public class AESPipeline extends Pipeline {
                 aesRecvQueue.put(new AESRecvObject(null));
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(receiver).start();
@@ -145,6 +151,7 @@ public class AESPipeline extends Pipeline {
                 }
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(unpacker).start();
@@ -164,6 +171,7 @@ public class AESPipeline extends Pipeline {
                 }
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
+                e.printStackTrace();
             }
         };
         new Thread(merger).start();
