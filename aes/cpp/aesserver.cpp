@@ -10,10 +10,9 @@
 
 #define PORT 6070
 #define TILE (1 << 20)
-#define COUNT_DOWN (1 << 20)
 
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<8> > input_queue;
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<8> > output_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > input_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > output_queue;
 
 void gather(void) {
 
@@ -39,25 +38,29 @@ void gather(void) {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, 8) < 0) {
+    if (listen(server_fd, 32) < 0) {
         std::cerr << "Listen failed" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    int count_down = COUNT_DOWN;
     int addrlen = sizeof(address);
-    while (count_down--) {
+    int num_gather = 0;
+    while (true) {
         int instance = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen);
         if (instance < 0) {
-            std::cerr << "Accept failed with countdown " << count_down << std::endl;
+            std::cerr << "Accept failed" << std::endl;
         }
         else {
             char* buffer = new char[TILE];
             read(instance, buffer, TILE);
-	    //close(instance);
-	    for (int i=0; i<64; i++) std::cout << buffer[i];
-	    std::cout << std::endl;
+	    char tail[64];
+	    int n;
+	    while ((n = read(instance, tail, sizeof(tail))) > 0) ;
+	    close(instance);
             while (!input_queue.push(buffer)) ;
+	    num_gather++;
+	    //if (num_gather % 10 == 0)
+	    //    std::cout << "Received " << num_gather << " requests" << std::endl;
         }
     }
 }
@@ -65,18 +68,19 @@ void gather(void) {
 void compute(void) {
     char* buffer = NULL;
     
-    int count_down = COUNT_DOWN;
-    while (count_down--) {
+    int num_compute = 0;
+    while (true) {
         char* buffer = NULL;
         while (!input_queue.pop(buffer)) ;
         for (int i=0; i<TILE; i++) buffer[i] = toupper(buffer[i]);
         while (!output_queue.push(buffer)) ;
+	num_compute++;
+	//if (num_compute % 10 == 0)
+	//    std::cout << "Processed " << num_compute << " requests" << std::endl;
     }
 }
 
 void scatter(void) {
-    int count_down = COUNT_DOWN;
-    
     sockaddr_in serv_addr;
     bzero(&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -86,25 +90,27 @@ void scatter(void) {
         exit(EXIT_FAILURE);
     }
 
-    while (count_down--) {
+    int num_scatter = 0;
+    while (true) {
         char* buffer = NULL;
         while (!output_queue.pop(buffer)) ;
-	for (int i=0; i<64; i++) std::cout << buffer[i];
-	std::cout << std::endl;
 
         int sock;
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             std::cerr << "Socket failed" << std::endl;
             exit(EXIT_FAILURE);
         }
+    
         if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-            std::cerr << "Connect failed with countdown: " << count_down << std::endl;
+            std::cerr << "Connect failed" << std::endl;
         }
-        else {
-            write(sock, buffer, TILE);
-            delete [] buffer;
-	    //close(sock);
-        }
+        write(sock, buffer, TILE);
+        delete [] buffer;
+	close(sock);
+
+	num_scatter++;
+	//if (num_scatter % 10 == 0)
+	//    std::cout << "Scatter " << num_scatter << " requests" << std::endl;
     }
 }
 

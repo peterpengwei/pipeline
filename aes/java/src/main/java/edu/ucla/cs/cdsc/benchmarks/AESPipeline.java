@@ -32,7 +32,7 @@ public class AESPipeline extends Pipeline {
     public void send(SendObject obj) {
         try (Socket socket = new Socket("localhost", 6070)) {
             byte[] data = ((AESSendObject) obj).getData();
-            logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
+            //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             socket.getOutputStream().write(data, 0, TILE_SIZE);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
@@ -44,8 +44,8 @@ public class AESPipeline extends Pipeline {
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
             byte[] data = new byte[TILE_SIZE];
-            incoming.getInputStream().read(data, 0, TILE_SIZE);
-            logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
+	    incoming.getInputStream().read(data, 0, TILE_SIZE);
+            //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
@@ -79,7 +79,6 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        new Thread(splitter).start();
 
         Runnable packer = () -> {
             try {
@@ -99,7 +98,6 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        new Thread(packer).start();
 
         Runnable sender = () -> {
             try {
@@ -117,7 +115,6 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        new Thread(sender).start();
 
         Runnable receiver = () -> {
             try (ServerSocket server = new ServerSocket(9520)) {
@@ -134,7 +131,6 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        new Thread(receiver).start();
 
         Runnable unpacker = () -> {
             try {
@@ -154,7 +150,6 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        new Thread(unpacker).start();
 
         StringBuilder stringBuilder = new StringBuilder();
         Runnable merger = () -> {
@@ -170,12 +165,18 @@ public class AESPipeline extends Pipeline {
                             stringBuilder.append(obj.getData());
                         }
                     }
+		    idx++;
                 }
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
         };
+        new Thread(splitter).start();
+        new Thread(packer).start();
+        new Thread(sender).start();
+        new Thread(receiver).start();
+        new Thread(unpacker).start();
         new Thread(merger).start();
 
         return stringBuilder.toString();
