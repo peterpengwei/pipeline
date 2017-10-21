@@ -63,7 +63,6 @@ public class AESPipeline extends Pipeline {
 
     @Override
     public Object execute(Object input) {
-        long overallStartTime = System.nanoTime();
         Runnable splitter = () -> {
             try {
                 long startTime = System.nanoTime();
@@ -76,7 +75,6 @@ public class AESPipeline extends Pipeline {
                     }
                 }
                 aesPackQueue.put(new AESPackObject(null, -1));
-                splitTime = System.nanoTime() - startTime;
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -85,7 +83,6 @@ public class AESPipeline extends Pipeline {
 
         Runnable packer = () -> {
             try {
-                long startTime = System.nanoTime();
                 boolean done = false;
                 BlockingQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 while (!done) {
@@ -97,7 +94,6 @@ public class AESPipeline extends Pipeline {
                         aesSendQueue.put(pack(obj));
                     }
                 }
-                packTime = System.nanoTime() - startTime;
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -106,7 +102,6 @@ public class AESPipeline extends Pipeline {
 
         Runnable sender = () -> {
             try {
-                long startTime = System.nanoTime();
                 boolean done = false;
                 while (!done) {
                     AESSendObject obj = (AESSendObject) AESPipeline.getSendQueue().take();
@@ -116,7 +111,6 @@ public class AESPipeline extends Pipeline {
                         send(obj);
                     }
                 }
-                sendTime = System.nanoTime() - startTime;
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -125,7 +119,6 @@ public class AESPipeline extends Pipeline {
 
         Runnable receiver = () -> {
             try (ServerSocket server = new ServerSocket(9520)) {
-                long startTime = System.nanoTime();
                 int numOfTiles = (int) (size / TILE_SIZE);
                 BlockingQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < 64; j++) {
@@ -134,7 +127,6 @@ public class AESPipeline extends Pipeline {
                     }
                 }
                 aesRecvQueue.put(new AESRecvObject(null));
-                receiveTime = System.nanoTime() - startTime;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -143,7 +135,6 @@ public class AESPipeline extends Pipeline {
 
         Runnable unpacker = () -> {
             try {
-                long startTime = System.nanoTime();
                 boolean done = false;
                 BlockingQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 while (!done) {
@@ -155,7 +146,6 @@ public class AESPipeline extends Pipeline {
                         aesUnpackQueue.put(unpack(obj));
                     }
                 }
-                unpackTime = System.nanoTime() - startTime;
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -165,7 +155,6 @@ public class AESPipeline extends Pipeline {
         StringBuilder stringBuilder = new StringBuilder();
         Runnable merger = () -> {
             try {
-                long startTime = System.nanoTime();
                 boolean done = false;
                 int idx = 0;
                 while (!done) {
@@ -179,27 +168,38 @@ public class AESPipeline extends Pipeline {
                     }
                     idx++;
                 }
-                mergeTime = System.nanoTime() - startTime;
             } catch (InterruptedException e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
         };
-        new Thread(splitter).start();
-        new Thread(packer).start();
-        new Thread(sender).start();
-        new Thread(receiver).start();
-        new Thread(unpacker).start();
-        new Thread(merger).start();
+        Thread splitThread = new Thread(splitter);
+        splitThread.start();
+        Thread packThread = new Thread(packer);
+        packThread.start();
+        Thread sendThread = new Thread(sender);
+        sendThread.start();
+        Thread recvThread = new Thread(receiver);
+        recvThread.start();
+        Thread unpackThread = new Thread(unpacker);
+        unpackThread.start();
+        Thread mergeThread = new Thread(merger);
+        mergeThread.start();
 
+        try {
+            splitThread.join();
+            packThread.join();
+            sendThread.join();
+            recvThread.join();
+            unpackThread.join();
+            mergeThread.join();
+        } catch (Exception e) {
+            logger.severe("Caught exception: " + e);
+            e.printStackTrace();
+        }
+        
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        System.out.println("[Split] " + splitTime / 1.0e9);
-        System.out.println("[Pack] " + packTime / 1.0e9);
-        System.out.println("[Send] " + sendTime / 1.0e9);
-        System.out.println("[Recv] " + receiveTime / 1.0e9);
-        System.out.println("[Unpack] " + unpackTime / 1.0e9);
-        System.out.println("[Merge] " + mergeTime / 1.0e9);
         return stringBuilder.toString();
     }
 
@@ -207,10 +207,4 @@ public class AESPipeline extends Pipeline {
     private long size;
     private static final int TILE_SIZE = (1 << 20);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
-    private long splitTime;
-    private long packTime;
-    private long sendTime;
-    private long receiveTime;
-    private long unpackTime;
-    private long mergeTime;
 }
