@@ -63,6 +63,7 @@ public class AESPipeline extends Pipeline {
 
     @Override
     public Object execute(Object input) {
+        long overallStartTime = System.nanoTime();
         Runnable splitter = () -> {
             try {
                 long startTime = System.nanoTime();
@@ -197,7 +198,7 @@ public class AESPipeline extends Pipeline {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
         }
-        
+
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
         return stringBuilder.toString();
