@@ -1,6 +1,7 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
 import edu.ucla.cs.cdsc.pipeline.*;
+import org.jctools.queues.SpscArrayQueue;
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -66,17 +67,17 @@ public class AESPipeline extends Pipeline {
         long overallStartTime = System.nanoTime();
         Runnable splitter = () -> {
             try {
-                long startTime = System.nanoTime();
                 int numOfTiles = (int) (size / TILE_SIZE);
-                BlockingQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
+                SpscArrayQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
                 for (int j = 0; j < 64; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
-                        aesPackQueue.put(inputObj);
+                        while (aesPackQueue.offer(inputObj) == false) ;
                     }
                 }
-                aesPackQueue.put(new AESPackObject(null, -1));
-            } catch (InterruptedException e) {
+                AESPackObject endNode = new AESPackObject(null, -1);
+                while (aesPackQueue.offer(endNode) == false) ;
+            } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
@@ -85,17 +86,19 @@ public class AESPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 boolean done = false;
-                BlockingQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 while (!done) {
-                    AESPackObject obj = (AESPackObject) AESPipeline.getPackQueue().take();
+                    AESPackObject obj;
+                    while ((obj = (AESPackObject) AESPipeline.getPackQueue().poll()) == null) ;
                     if (obj.getData() == null && obj.getStartIdx() == -1) {
                         done = true;
-                        aesSendQueue.put(new AESSendObject(null));
+                        AESSendObject endNode = new AESSendObject(null);
+                        while (!aesSendQueue.offer(endNode)) ;
                     } else {
-                        aesSendQueue.put(pack(obj));
+                        while (!aesSendQueue.offer(pack(obj))) ;
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
@@ -105,14 +108,15 @@ public class AESPipeline extends Pipeline {
             try {
                 boolean done = false;
                 while (!done) {
-                    AESSendObject obj = (AESSendObject) AESPipeline.getSendQueue().take();
+                    AESSendObject obj;
+                    while ((obj = (AESSendObject) AESPipeline.getSendQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
                     } else {
                         send(obj);
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
@@ -121,13 +125,14 @@ public class AESPipeline extends Pipeline {
         Runnable receiver = () -> {
             try (ServerSocket server = new ServerSocket(9520)) {
                 int numOfTiles = (int) (size / TILE_SIZE);
-                BlockingQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
+                SpscArrayQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < 64; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        aesRecvQueue.put(receive(server));
+                        while (!aesRecvQueue.offer(receive(server))) ;
                     }
                 }
-                aesRecvQueue.put(new AESRecvObject(null));
+                AESRecvObject endNode = new AESRecvObject(null);
+                while (!aesRecvQueue.offer(endNode)) ;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -137,17 +142,18 @@ public class AESPipeline extends Pipeline {
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
-                BlockingQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
+                SpscArrayQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 while (!done) {
-                    AESRecvObject obj = (AESRecvObject) AESPipeline.getRecvQueue().take();
+                    AESRecvObject obj;
+                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
-                        aesUnpackQueue.put(new AESUnpackObject(null));
+                        while (!aesUnpackQueue.offer(new AESUnpackObject(null))) ;
                     } else {
-                        aesUnpackQueue.put(unpack(obj));
+                        while (!aesUnpackQueue.offer(unpack(obj))) ;
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
@@ -159,7 +165,8 @@ public class AESPipeline extends Pipeline {
                 boolean done = false;
                 int idx = 0;
                 while (!done) {
-                    AESUnpackObject obj = (AESUnpackObject) AESPipeline.getUnpackQueue().take();
+                    AESUnpackObject obj;
+                    while ((obj = (AESUnpackObject) AESPipeline.getUnpackQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
                     } else {
@@ -169,7 +176,7 @@ public class AESPipeline extends Pipeline {
                     }
                     idx++;
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
             }
