@@ -16,27 +16,30 @@ public class AESMain {
         // args[0]: path to input file
         // args[1]: path to output file
         // args[2]: file size
-        if (args.length != 3) {
+        // args[3]: repeat factor
+        if (args.length != 4) {
             logger.severe("Invalid command-line format");
             System.exit(1);
         }
         String inputFile = args[0];
         String outputFile = args[1];
-        long size = Integer.parseInt(args[2]);
+        int size = Integer.parseInt(args[2]);
+        int repeatFactor = Integer.parseInt(args[3]);
 
         String inputData = "";
         try {
             FileInputStream inputStream = new FileInputStream(inputFile);
             Path inputPath = Paths.get(inputFile);
-            byte[] bytes = new byte[(int) size];
-            inputStream.read(bytes, 0, (int) size);
+            byte[] bytes = new byte[size];
+            inputStream.read(bytes, 0, size);
             inputData = new String(bytes);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
+            e.printStackTrace();
             System.exit(1);
         }
 
-        AESPipeline pipeline = new AESPipeline(inputData, size);
+        AESPipeline pipeline = new AESPipeline(inputData, size, repeatFactor);
 
         String outputData = (String) pipeline.execute(null);
 
@@ -45,6 +48,7 @@ public class AESMain {
             Files.write(outputPath, outputData.getBytes());
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
+            e.printStackTrace();
             System.exit(1);
         }
     }
