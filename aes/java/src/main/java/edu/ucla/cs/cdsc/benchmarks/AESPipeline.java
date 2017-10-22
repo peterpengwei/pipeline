@@ -65,6 +65,7 @@ public class AESPipeline extends Pipeline {
     @Override
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
+        /*
         Runnable splitter = () -> {
             try {
                 int numOfTiles = (int) (size / TILE_SIZE);
@@ -73,7 +74,7 @@ public class AESPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
                         while (aesPackQueue.offer(inputObj) == false) ;
-                            //logger.info("Pack queue full");
+                        //logger.info("Pack queue full");
                     }
                 }
                 AESPackObject endNode = new AESPackObject(null, -1);
@@ -98,9 +99,30 @@ public class AESPipeline extends Pipeline {
                     } else {
                         SendObject curObj = pack(obj);
                         while (!aesSendQueue.offer(curObj)) ;
-                            //logger.info("Send queue full");
+                        //logger.info("Send queue full");
                     }
                 }
+            } catch (Exception e) {
+                logger.severe("Caught exception: " + e);
+                e.printStackTrace();
+            }
+        };
+        */
+
+        Runnable packer = () -> {
+            try {
+                int numOfTiles = (int) (size / TILE_SIZE);
+                SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                for (int j = 0; j < TRIP_COUNT; j++) {
+                    for (int i = 0; i < numOfTiles; i++) {
+                        AESPackObject packObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
+                        AESSendObject sendObj = (AESSendObject) pack(packObj);
+                        while (aesSendQueue.offer(sendObj) == false) ;
+                        //logger.info("Pack queue full");
+                    }
+                }
+                AESSendObject endNode = new AESSendObject(null);
+                while (aesSendQueue.offer(endNode) == false) ;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -133,7 +155,7 @@ public class AESPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         RecvObject curObj = receive(server);
                         while (!aesRecvQueue.offer(curObj)) ;
-                            //logger.info("Recv queue full");
+                        //logger.info("Recv queue full");
                     }
                 }
                 AESRecvObject endNode = new AESRecvObject(null);
@@ -144,6 +166,7 @@ public class AESPipeline extends Pipeline {
             }
         };
 
+        /*
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
@@ -158,7 +181,7 @@ public class AESPipeline extends Pipeline {
                     } else {
                         UnpackObject curObj = unpack(obj);
                         while (!aesUnpackQueue.offer(curObj)) ;
-                            //logger.info("Unpack queue full");
+                        //logger.info("Unpack queue full");
                     }
                 }
             } catch (Exception e) {
@@ -189,8 +212,34 @@ public class AESPipeline extends Pipeline {
                 e.printStackTrace();
             }
         };
-        Thread splitThread = new Thread(splitter);
-        splitThread.start();
+        */
+        StringBuilder stringBuilder = new StringBuilder();
+        Runnable unpacker = () -> {
+            try {
+                boolean done = false;
+                SpscArrayQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
+                int idx = 0;
+                while (!done) {
+                    AESRecvObject obj;
+                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
+                    if (obj.getData() == null) {
+                        done = true;
+                    } else {
+                        if (idx % TRIP_COUNT == 0) {
+                            AESUnpackObject unpackObj = (AESUnpackObject) unpack(obj);
+                            stringBuilder.append(unpackObj.getData());
+                        }
+                    }
+                    idx++;
+                }
+            } catch (Exception e) {
+                logger.severe("Caught exception: " + e);
+                e.printStackTrace();
+            }
+        };
+
+        //Thread splitThread = new Thread(splitter);
+        //splitThread.start();
         Thread packThread = new Thread(packer);
         packThread.start();
         Thread sendThread = new Thread(sender);
@@ -199,16 +248,16 @@ public class AESPipeline extends Pipeline {
         recvThread.start();
         Thread unpackThread = new Thread(unpacker);
         unpackThread.start();
-        Thread mergeThread = new Thread(merger);
-        mergeThread.start();
+        //Thread mergeThread = new Thread(merger);
+        //mergeThread.start();
 
         try {
-            splitThread.join();
+            //splitThread.join();
             packThread.join();
             sendThread.join();
             recvThread.join();
             unpackThread.join();
-            mergeThread.join();
+            //mergeThread.join();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
