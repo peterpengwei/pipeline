@@ -72,8 +72,8 @@ public class AESPipeline extends Pipeline {
                 for (int j = 0; j < TRIP_COUNT; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
-                        while (aesPackQueue.offer(inputObj) == false)
-                            logger.info("Pack queue full");
+                        while (aesPackQueue.offer(inputObj) == false) ;
+                            //logger.info("Pack queue full");
                     }
                 }
                 AESPackObject endNode = new AESPackObject(null, -1);
@@ -97,8 +97,8 @@ public class AESPipeline extends Pipeline {
                         while (!aesSendQueue.offer(endNode)) ;
                     } else {
                         SendObject curObj = pack(obj);
-                        while (!aesSendQueue.offer(curObj))
-                            logger.info("Send queue full");
+                        while (!aesSendQueue.offer(curObj)) ;
+                            //logger.info("Send queue full");
                     }
                 }
             } catch (Exception e) {
@@ -132,8 +132,8 @@ public class AESPipeline extends Pipeline {
                 for (int j = 0; j < TRIP_COUNT; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         RecvObject curObj = receive(server);
-                        while (!aesRecvQueue.offer(curObj))
-                            logger.info("Recv queue full");
+                        while (!aesRecvQueue.offer(curObj)) ;
+                            //logger.info("Recv queue full");
                     }
                 }
                 AESRecvObject endNode = new AESRecvObject(null);
@@ -157,8 +157,8 @@ public class AESPipeline extends Pipeline {
                         while (!aesUnpackQueue.offer(endNode)) ;
                     } else {
                         UnpackObject curObj = unpack(obj);
-                        while (!aesUnpackQueue.offer(curObj))
-                            logger.info("Unpack queue full");
+                        while (!aesUnpackQueue.offer(curObj)) ;
+                            //logger.info("Unpack queue full");
                     }
                 }
             } catch (Exception e) {
@@ -223,5 +223,5 @@ public class AESPipeline extends Pipeline {
     private long size;
     private static final int TILE_SIZE = (1 << 20);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
-    private static final int TRIP_COUNT = 1;
+    private static final int TRIP_COUNT = 32;
 }
