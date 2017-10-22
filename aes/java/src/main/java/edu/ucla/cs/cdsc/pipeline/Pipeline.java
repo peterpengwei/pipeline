@@ -14,10 +14,10 @@ import java.util.concurrent.BlockingQueue;
  * Created by Peter on 10/10/2017.
  */
 public abstract class Pipeline {
-    private static final int PACK_QUEUE_SIZE = 8;
-    private static final int SEND_QUEUE_SIZE = 8;
-    private static final int RECV_QUEUE_SIZE = 8;
-    private static final int UNPACK_QUEUE_SIZE = 8;
+    private static final int PACK_QUEUE_SIZE = 32;
+    private static final int SEND_QUEUE_SIZE = 32;
+    private static final int RECV_QUEUE_SIZE = 32;
+    private static final int UNPACK_QUEUE_SIZE = 32;
 
     private static SpscArrayQueue<PackObject> packQueue = new SpscArrayQueue<>(PACK_QUEUE_SIZE);
     private static SpscArrayQueue<SendObject> sendQueue = new SpscArrayQueue<>(SEND_QUEUE_SIZE);
