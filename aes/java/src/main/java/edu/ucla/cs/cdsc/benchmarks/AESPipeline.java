@@ -1,17 +1,22 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
 import edu.ucla.cs.cdsc.pipeline.*;
-import org.jctools.queues.SpscArrayQueue;
+import org.jctools.queues.SpscLinkedQueue;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.BlockingQueue;
 import java.util.logging.Logger;
 
 /**
  * Created by Peter on 10/10/2017.
  */
 public class AESPipeline extends Pipeline {
+    private static final int TILE_SIZE = (1 << 20);
+    private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
+    private String inputData;
+    private int size;
+    private int repeatFactor;
+
     public AESPipeline() {
         this("", 0, 0);
     }
@@ -70,7 +75,7 @@ public class AESPipeline extends Pipeline {
         Runnable splitter = () -> {
             try {
                 int numOfTiles = (int) (size / TILE_SIZE);
-                SpscArrayQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
+                SpscLinkedQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
                 for (int j = 0; j < TRIP_COUNT; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
@@ -89,7 +94,7 @@ public class AESPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 boolean done = false;
-                SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 while (!done) {
                     AESPackObject obj;
                     while ((obj = (AESPackObject) AESPipeline.getPackQueue().poll()) == null) ;
@@ -113,7 +118,7 @@ public class AESPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 int numOfTiles = size / TILE_SIZE;
-                SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE);
@@ -151,7 +156,7 @@ public class AESPipeline extends Pipeline {
         Runnable receiver = () -> {
             try (ServerSocket server = new ServerSocket(9520)) {
                 int numOfTiles = size / TILE_SIZE;
-                SpscArrayQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
+                SpscLinkedQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         RecvObject curObj = receive(server);
@@ -171,7 +176,7 @@ public class AESPipeline extends Pipeline {
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
-                SpscArrayQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
+                SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 while (!done) {
                     AESRecvObject obj;
                     while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
@@ -218,7 +223,6 @@ public class AESPipeline extends Pipeline {
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
-                SpscArrayQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 int idx = 0;
                 while (!done) {
                     AESRecvObject obj;
@@ -268,10 +272,4 @@ public class AESPipeline extends Pipeline {
         System.out.println("[Overall] " + overallTime / 1.0e9);
         return stringBuilder.toString();
     }
-
-    private String inputData;
-    private int size;
-    private int repeatFactor;
-    private static final int TILE_SIZE = (1 << 20);
-    private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
 }

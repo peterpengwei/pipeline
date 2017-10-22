@@ -2,7 +2,8 @@ package edu.ucla.cs.cdsc.pipeline;
 
 import jdk.nashorn.internal.ir.Block;
 import org.jctools.queues.QueueFactory;
-import org.jctools.queues.SpscArrayQueue;
+import org.jctools.queues.SpscLinkedQueue;
+import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.RandomAccessFile;
 import java.net.ServerSocket;
@@ -19,24 +20,24 @@ public abstract class Pipeline {
     private static final int RECV_QUEUE_SIZE = 32;
     private static final int UNPACK_QUEUE_SIZE = 32;
 
-    private static SpscArrayQueue<PackObject> packQueue = new SpscArrayQueue<>(PACK_QUEUE_SIZE);
-    private static SpscArrayQueue<SendObject> sendQueue = new SpscArrayQueue<>(SEND_QUEUE_SIZE);
-    private static SpscArrayQueue<RecvObject> recvQueue = new SpscArrayQueue<>(RECV_QUEUE_SIZE);
-    private static SpscArrayQueue<UnpackObject> unpackQueue = new SpscArrayQueue<>(UNPACK_QUEUE_SIZE);
+    private static SpscLinkedQueue<PackObject> packQueue = new SpscLinkedQueue<>();
+    private static SpscLinkedQueue<SendObject> sendQueue = new SpscLinkedQueue<>();
+    private static SpscLinkedQueue<RecvObject> recvQueue = new SpscLinkedQueue<>();
+    private static SpscLinkedQueue<UnpackObject> unpackQueue = new SpscLinkedQueue<>();
 
-    public static SpscArrayQueue<PackObject> getPackQueue() {
+    public static SpscLinkedQueue<PackObject> getPackQueue() {
         return packQueue;
     }
 
-    public static SpscArrayQueue<SendObject> getSendQueue() {
+    public static SpscLinkedQueue<SendObject> getSendQueue() {
         return sendQueue;
     }
 
-    public static SpscArrayQueue<RecvObject> getRecvQueue() {
+    public static SpscLinkedQueue<RecvObject> getRecvQueue() {
         return recvQueue;
     }
 
-    public static SpscArrayQueue<UnpackObject> getUnpackQueue() {
+    public static SpscLinkedQueue<UnpackObject> getUnpackQueue() {
         return unpackQueue;
     }
 
