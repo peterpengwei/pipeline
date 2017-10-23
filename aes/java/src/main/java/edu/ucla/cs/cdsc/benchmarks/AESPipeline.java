@@ -75,198 +75,22 @@ public class AESPipeline extends Pipeline {
     @Override
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
-        /*
-        Runnable splitter = () -> {
-            try {
-                int numOfTiles = (int) (size / TILE_SIZE);
-                SpscLinkedQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
-                for (int j = 0; j < TRIP_COUNT; j++) {
-                    for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
-                        while (aesPackQueue.offer(inputObj) == false) ;
-                        //logger.info("Pack queue full");
-                    }
-                }
-                AESPackObject endNode = new AESPackObject(null, -1);
-                while (aesPackQueue.offer(endNode) == false) ;
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        Runnable packer = () -> {
-            try {
-                boolean done = false;
-                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
-                while (!done) {
-                    AESPackObject obj;
-                    while ((obj = (AESPackObject) AESPipeline.getPackQueue().poll()) == null) ;
-                    if (obj.getData() == null && obj.getStartIdx() == -1) {
-                        done = true;
-                        AESSendObject endNode = new AESSendObject(null);
-                        while (!aesSendQueue.offer(endNode)) ;
-                    } else {
-                        SendObject curObj = pack(obj);
-                        while (!aesSendQueue.offer(curObj)) ;
-                        //logger.info("Send queue full");
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-        */
-
-        Runnable packer = () -> {
-            try {
-                int numOfTiles = size / TILE_SIZE;
-                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
-                for (int j = 0; j < repeatFactor; j++) {
-                    for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE);
-                        AESSendObject sendObj = (AESSendObject) pack(packObj);
-                        while (aesSendQueue.offer(sendObj) == false) ;
-                        //logger.info("Pack queue full");
-                    }
-                }
-                AESSendObject endNode = new AESSendObject(null);
-                while (aesSendQueue.offer(endNode) == false) ;
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        Runnable sender = () -> {
-            try {
-                boolean done = false;
-                while (!done) {
-                    AESSendObject obj;
-                    while ((obj = (AESSendObject) AESPipeline.getSendQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        send(obj);
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        Runnable receiver = () -> {
-            try (ServerSocket server = new ServerSocket(9520)) {
-                int numOfTiles = size / TILE_SIZE;
-                SpscLinkedQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
-                for (int j = 0; j < repeatFactor; j++) {
-                    for (int i = 0; i < numOfTiles; i++) {
-                        RecvObject curObj = receive(server);
-                        while (!aesRecvQueue.offer(curObj)) ;
-                        //logger.info("Recv queue full");
-                    }
-                }
-                AESRecvObject endNode = new AESRecvObject(null);
-                while (!aesRecvQueue.offer(endNode)) ;
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        /*
-        Runnable unpacker = () -> {
-            try {
-                boolean done = false;
-                SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
-                while (!done) {
-                    AESRecvObject obj;
-                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                        AESUnpackObject endNode = new AESUnpackObject(null);
-                        while (!aesUnpackQueue.offer(endNode)) ;
-                    } else {
-                        UnpackObject curObj = unpack(obj);
-                        while (!aesUnpackQueue.offer(curObj)) ;
-                        //logger.info("Unpack queue full");
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
 
         StringBuilder stringBuilder = new StringBuilder();
-        Runnable merger = () -> {
-            try {
-                boolean done = false;
-                int idx = 0;
-                while (!done) {
-                    AESUnpackObject obj;
-                    while ((obj = (AESUnpackObject) AESPipeline.getUnpackQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        if (idx % TRIP_COUNT == 0) {
-                            stringBuilder.append(obj.getData());
-                        }
+        try (ServerSocket server = new ServerSocket(9520)) {
+            int numOfTiles = size / TILE_SIZE;
+            for (int j = 0; j < repeatFactor; j++) {
+                for (int i = 0; i < numOfTiles; i++) {
+                    AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE);
+                    AESSendObject sendObj = (AESSendObject) pack(packObj);
+                    send(sendObj);
+                    AESRecvObject recvObj = (AESRecvObject) receive(server);
+                    AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
+                    if (j == 0) {
+                        stringBuilder.append(unpackObj.getData());
                     }
-                    idx++;
                 }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
             }
-        };
-        */
-        StringBuilder stringBuilder = new StringBuilder();
-        Runnable unpacker = () -> {
-            try {
-                boolean done = false;
-                int idx = 0;
-                while (!done) {
-                    AESRecvObject obj;
-                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        if (idx < size / TILE_SIZE) {
-                            AESUnpackObject unpackObj = (AESUnpackObject) unpack(obj);
-                            stringBuilder.append(unpackObj.getData());
-                        }
-                    }
-                    idx++;
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        //Thread splitThread = new Thread(splitter);
-        //splitThread.start();
-        Thread packThread = new Thread(packer);
-        packThread.start();
-        Thread sendThread = new Thread(sender);
-        sendThread.start();
-        Thread recvThread = new Thread(receiver);
-        recvThread.start();
-        Thread unpackThread = new Thread(unpacker);
-        unpackThread.start();
-        //Thread mergeThread = new Thread(merger);
-        //mergeThread.start();
-
-        try {
-            //splitThread.join();
-            packThread.join();
-            sendThread.join();
-            recvThread.join();
-            unpackThread.join();
-            //mergeThread.join();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
