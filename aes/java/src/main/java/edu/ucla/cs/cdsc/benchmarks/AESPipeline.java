@@ -3,6 +3,8 @@ package edu.ucla.cs.cdsc.benchmarks;
 import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscArrayQueue;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
@@ -34,8 +36,9 @@ public class AESPipeline extends Pipeline {
     public void send(SendObject obj) {
         try (Socket socket = new Socket("localhost", 6070)) {
             byte[] data = ((AESSendObject) obj).getData();
+            BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
-            socket.getOutputStream().write(data, 0, TILE_SIZE);
+            out.write(data, 0, TILE_SIZE);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -46,7 +49,8 @@ public class AESPipeline extends Pipeline {
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
             byte[] data = new byte[TILE_SIZE];
-            incoming.getInputStream().read(data, 0, TILE_SIZE);
+            BufferedInputStream in = new BufferedInputStream(incoming.getInputStream());
+            in.read(data, 0, TILE_SIZE);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             return new AESRecvObject(data);
         } catch (Exception e) {
