@@ -13,18 +13,19 @@ import java.util.logging.Logger;
  */
 public class AESPipeline extends Pipeline {
     public AESPipeline() {
-        this("", 0);
+        this("", 0, 0);
     }
 
-    public AESPipeline(String inputData, long size) {
+    public AESPipeline(String inputData, int size, int repeatFactor) {
         this.inputData = inputData;
         this.size = size;
+        this.repeatFactor = repeatFactor;
     }
 
     @Override
     public SendObject pack(PackObject obj) {
         AESPackObject aesPackObject = (AESPackObject) obj;
-        int startIdx = (int) aesPackObject.getStartIdx();
+        int startIdx = aesPackObject.getStartIdx();
         int endIdx = startIdx + TILE_SIZE;
         return new AESSendObject(aesPackObject.getData().substring(startIdx, endIdx).getBytes());
     }
@@ -111,11 +112,11 @@ public class AESPipeline extends Pipeline {
 
         Runnable packer = () -> {
             try {
-                int numOfTiles = (int) (size / TILE_SIZE);
+                int numOfTiles = size / TILE_SIZE;
                 SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
-                for (int j = 0; j < TRIP_COUNT; j++) {
+                for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject packObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
+                        AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
                         while (aesSendQueue.offer(sendObj) == false) ;
                         //logger.info("Pack queue full");
@@ -149,9 +150,9 @@ public class AESPipeline extends Pipeline {
 
         Runnable receiver = () -> {
             try (ServerSocket server = new ServerSocket(9520)) {
-                int numOfTiles = (int) (size / TILE_SIZE);
+                int numOfTiles = size / TILE_SIZE;
                 SpscArrayQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
-                for (int j = 0; j < TRIP_COUNT; j++) {
+                for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         RecvObject curObj = receive(server);
                         while (!aesRecvQueue.offer(curObj)) ;
@@ -225,7 +226,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                     } else {
-                        if (idx % TRIP_COUNT == 0) {
+                        if (idx < size / TILE_SIZE) {
                             AESUnpackObject unpackObj = (AESUnpackObject) unpack(obj);
                             stringBuilder.append(unpackObj.getData());
                         }
@@ -269,8 +270,8 @@ public class AESPipeline extends Pipeline {
     }
 
     private String inputData;
-    private long size;
+    private int size;
+    private int repeatFactor;
     private static final int TILE_SIZE = (1 << 20);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
-    private static final int TRIP_COUNT = 32;
 }
