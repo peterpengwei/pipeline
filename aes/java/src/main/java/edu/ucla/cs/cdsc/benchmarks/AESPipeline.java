@@ -43,30 +43,31 @@ public class AESPipeline extends Pipeline {
         try {
             String filename = System.getProperty("java.io.tmpdir") +
                     "/AESInput_" + Integer.toString(startIdx) + "_" + Integer.toString(repeatIdx) + ".txt";
-            logger.info("Sending file " + filename);
-            RandomAccessFile file = new RandomAccessFile(filename, "w");
+            RandomAccessFile file = new RandomAccessFile(filename, "rw");
             FileChannel channel = file.getChannel();
             MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             for (int i=startIdx; i<endIdx; i++) buffer.put((byte) aesPackObject.getData().charAt(i));
-            channel.close();
-            file.close();
-            return new AESSendObject(filename);
+            //channel.close();
+            //file.close();
+            AESSendObject retObj = new AESSendObject(filename);
+	    return retObj;
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
-        } finally {
             return new AESSendObject(null);
         }
     }
 
     @Override
     public void send(SendObject obj) {
-        logger.info("Sending data: " + ((AESSendObject) obj).getFilename());
         try (Socket socket = new Socket("localhost", 6070)) {
-            byte[] data = ((AESSendObject) obj).getFilename().getBytes();
-            BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
-            out.write(data, 0, data.length);
+            //byte[] data = ((AESSendObject) obj).getFilename().getBytes();
+            //logger.info("Sending data with length " + data.length + " " + new String(data));
+            //DataOutputStream out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+	    //out.writeBytes(((AESSendObject) obj).getFilename());
+	    socket.getOutputStream().write(((AESSendObject) obj).getFilename().getBytes());
+            //out.write(data);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -77,18 +78,16 @@ public class AESPipeline extends Pipeline {
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
             DataInputStream in = new DataInputStream(incoming.getInputStream());
-            long nameIdx = in.readLong();
+            long nameIdx = Long.reverseBytes(in.readLong());
             int startIdx = (int) (nameIdx >> 32);
             int repeatIdx = (int) nameIdx;
             String filename = System.getProperty("java.io.tmpdir") + "/AESInput_" + Integer.toString(startIdx) +
                     "_" + Integer.toString(repeatIdx) + ".txt";
-            logger.info("Received file " + filename);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             return new AESRecvObject(filename);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
             e.printStackTrace();
-        } finally {
             return new AESRecvObject(null);
         }
     }
@@ -104,13 +103,12 @@ public class AESPipeline extends Pipeline {
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             byte[] data = new byte[TILE_SIZE];
             buffer.get(data, 0, TILE_SIZE);
-            channel.close();
+            //channel.close();
             Files.delete(path);
             return new AESUnpackObject(data);
         } catch (IOException e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
-        } finally {
             return new AESUnpackObject(null);
         }
     }
