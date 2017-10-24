@@ -50,6 +50,7 @@ public class AESPipeline extends Pipeline {
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             out.write(data, 0, TILE_SIZE);
+            socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -63,12 +64,12 @@ public class AESPipeline extends Pipeline {
             BufferedInputStream in = new BufferedInputStream(incoming.getInputStream());
             in.read(data, 0, TILE_SIZE);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
+            incoming.close();
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
             e.printStackTrace();
-        } finally {
-            return new AESRecvObject(new byte[0]);
+            return new AESRecvObject(null);
         }
     }
 
