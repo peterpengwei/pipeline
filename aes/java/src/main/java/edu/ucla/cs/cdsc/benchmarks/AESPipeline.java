@@ -3,8 +3,6 @@ package edu.ucla.cs.cdsc.benchmarks;
 import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscLinkedQueue;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -38,7 +36,7 @@ public class AESPipeline extends Pipeline {
         int endIdx = aesPackObject.getEndIdx();
         byte[] data = new byte[TILE_SIZE];
         int idx = 0;
-        for (int i=startIdx; i<endIdx; i++) {
+        for (int i = startIdx; i < endIdx; i++) {
             data[idx++] = (byte) input.charAt(i);
         }
         return new AESSendObject(data);
@@ -68,7 +66,7 @@ public class AESPipeline extends Pipeline {
             int n;
             InputStream in = incoming.getInputStream();
             int offset = 0, length = TILE_SIZE;
-            while((n = in.read(data, offset, length)) > 0) {
+            while ((n = in.read(data, offset, length)) > 0) {
                 if (n == length) break;
                 offset += n;
                 length -= n;
@@ -99,7 +97,7 @@ public class AESPipeline extends Pipeline {
                 SpscLinkedQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject inputObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
+                        AESPackObject inputObj = new AESPackObject(inputData, i * TILE_SIZE, (i + 1) * TILE_SIZE);
                         while (aesPackQueue.offer(inputObj) == false) ;
                         //logger.info("Pack queue full");
                     }
@@ -172,44 +170,22 @@ public class AESPipeline extends Pipeline {
             }
         };
 
+        char[] mergedOutput = new char[size];
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
+                int idx = 0;
                 SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
                 while (!done) {
                     AESRecvObject obj;
                     while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
-                        AESUnpackObject endNode = new AESUnpackObject(null);
-                        while (!aesUnpackQueue.offer(endNode)) ;
                     } else {
-                        UnpackObject curObj = unpack(obj);
-                        while (!aesUnpackQueue.offer(curObj)) ;
+                        byte[] data = obj.getData();
+                        idx %= size;
+                        for (int i = 0; i < TILE_SIZE; i++) mergedOutput[idx++] = (char) data[i];
                         //logger.info("Unpack queue full");
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        StringBuilder stringBuilder = new StringBuilder();
-        Runnable merger = () -> {
-            try {
-                boolean done = false;
-                int idx = 0;
-                int numOfTiles = size / TILE_SIZE;
-                while (!done) {
-                    AESUnpackObject obj;
-                    while ((obj = (AESUnpackObject) AESPipeline.getUnpackQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        if (idx++ < numOfTiles) {
-                            stringBuilder.append(obj.getData());
-                        }
                     }
                 }
             } catch (Exception e) {
@@ -228,8 +204,8 @@ public class AESPipeline extends Pipeline {
         recvThread.start();
         Thread unpackThread = new Thread(unpacker);
         unpackThread.start();
-        Thread mergeThread = new Thread(merger);
-        mergeThread.start();
+        //Thread mergeThread = new Thread(merger);
+        //mergeThread.start();
 
         try {
             splitThread.join();
@@ -237,7 +213,7 @@ public class AESPipeline extends Pipeline {
             sendThread.join();
             recvThread.join();
             unpackThread.join();
-            mergeThread.join();
+            //mergeThread.join();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -245,6 +221,6 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        return stringBuilder.toString();
+        return new String(mergedOutput);
     }
 }
