@@ -53,6 +53,7 @@ void gather(void) {
         else {
             char* buffer = new char[TILE];
             read(instance, buffer, TILE);
+	    std::cout << buffer[0] << std::endl;
 	    char tail[64];
 	    int n;
 	    while ((n = read(instance, tail, sizeof(tail))) > 0) ;
