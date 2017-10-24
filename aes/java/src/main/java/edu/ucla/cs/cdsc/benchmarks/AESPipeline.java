@@ -62,9 +62,9 @@ public class AESPipeline extends Pipeline {
 
     @Override
     public void send(SendObject obj) {
+        logger.info("Sending data: " + ((AESSendObject) obj).getFilename());
         try (Socket socket = new Socket("localhost", 6070)) {
             byte[] data = ((AESSendObject) obj).getFilename().getBytes();
-            logger.info("Sending data with length " + data.length + ": " + (new String(data)));
             BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             out.write(data, 0, data.length);
         } catch (Exception e) {
