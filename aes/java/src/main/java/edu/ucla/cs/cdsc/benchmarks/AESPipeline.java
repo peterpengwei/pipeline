@@ -61,15 +61,14 @@ public class AESPipeline extends Pipeline {
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
             e.printStackTrace();
-        } finally {
-            return new AESRecvObject(new byte[0]);
+            return new AESRecvObject(null);
         }
     }
 
     @Override
     public UnpackObject unpack(RecvObject obj) {
         AESRecvObject aesRecvObject = (AESRecvObject) obj;
-        return new AESUnpackObject(aesRecvObject.getData().toString());
+        return new AESUnpackObject(new String(aesRecvObject.getData()));
     }
 
     @Override
