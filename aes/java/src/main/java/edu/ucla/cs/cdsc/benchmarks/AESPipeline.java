@@ -3,10 +3,15 @@ package edu.ucla.cs.cdsc.benchmarks;
 import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscLinkedQueue;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
@@ -34,16 +39,33 @@ public class AESPipeline extends Pipeline {
         AESPackObject aesPackObject = (AESPackObject) obj;
         int startIdx = aesPackObject.getStartIdx();
         int endIdx = startIdx + TILE_SIZE;
-        return new AESSendObject(aesPackObject.getData().substring(startIdx, endIdx).getBytes());
+        int repeatIdx = aesPackObject.getRepeatIdx();
+        try {
+            String filename = System.getProperty("java.io.tmpdir") +
+                    "/AESInput_" + Integer.toString(startIdx) + "_" + Integer.toString(repeatIdx) + ".txt";
+            RandomAccessFile file = new RandomAccessFile(filename, "rw");
+            FileChannel channel = file.getChannel();
+            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            for (int i=startIdx; i<endIdx; i++) buffer.put((byte) aesPackObject.getData().charAt(i));
+            channel.close();
+            file.close();
+            return new AESSendObject(filename);
+        } catch (Exception e) {
+            logger.severe("Caught exception: " + e);
+            e.printStackTrace();
+        } finally {
+            return new AESSendObject(null);
+        }
     }
 
     @Override
     public void send(SendObject obj) {
         try (Socket socket = new Socket("localhost", 6070)) {
-            byte[] data = ((AESSendObject) obj).getData();
+            byte[] data = ((AESSendObject) obj).getFilename().getBytes();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
-            out.write(data, 0, TILE_SIZE);
+            out.write(data, 0, data.length);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -53,71 +75,47 @@ public class AESPipeline extends Pipeline {
     @Override
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
-            byte[] data = new byte[TILE_SIZE];
-            BufferedInputStream in = new BufferedInputStream(incoming.getInputStream());
-            in.read(data, 0, TILE_SIZE);
+            DataInputStream in = new DataInputStream(incoming.getInputStream());
+            long nameIdx = in.readLong();
+            int startIdx = (int) (nameIdx >> 32);
+            int repeatIdx = (int) nameIdx;
+            String filename = System.getProperty("java.io.tmpdir") + "/AESInput_" + Integer.toString(startIdx) +
+                    "_" + Integer.toString(repeatIdx) + ".txt";
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
-            return new AESRecvObject(data);
+            return new AESRecvObject(filename);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
             e.printStackTrace();
         } finally {
-            return new AESRecvObject(new byte[0]);
+            return new AESRecvObject(null);
         }
     }
 
     @Override
     public UnpackObject unpack(RecvObject obj) {
         AESRecvObject aesRecvObject = (AESRecvObject) obj;
-        return new AESUnpackObject(aesRecvObject.getData().toString());
+        String filename = aesRecvObject.getFilename();
+        Path path = Paths.get(filename);
+        try {
+            FileChannel channel = FileChannel.open(path);
+            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, TILE_SIZE);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            byte[] data = new byte[TILE_SIZE];
+            buffer.get(data, 0, TILE_SIZE);
+            channel.close();
+            Files.delete(path);
+            return new AESUnpackObject(data);
+        } catch (IOException e) {
+            logger.severe("Caught exception: " + e);
+            e.printStackTrace();
+        } finally {
+            return new AESUnpackObject(null);
+        }
     }
 
     @Override
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
-        /*
-        Runnable splitter = () -> {
-            try {
-                int numOfTiles = (int) (size / TILE_SIZE);
-                SpscLinkedQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
-                for (int j = 0; j < TRIP_COUNT; j++) {
-                    for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject inputObj = new AESPackObject(inputData, (long) i * TILE_SIZE);
-                        while (aesPackQueue.offer(inputObj) == false) ;
-                        //logger.info("Pack queue full");
-                    }
-                }
-                AESPackObject endNode = new AESPackObject(null, -1);
-                while (aesPackQueue.offer(endNode) == false) ;
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        Runnable packer = () -> {
-            try {
-                boolean done = false;
-                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
-                while (!done) {
-                    AESPackObject obj;
-                    while ((obj = (AESPackObject) AESPipeline.getPackQueue().poll()) == null) ;
-                    if (obj.getData() == null && obj.getStartIdx() == -1) {
-                        done = true;
-                        AESSendObject endNode = new AESSendObject(null);
-                        while (!aesSendQueue.offer(endNode)) ;
-                    } else {
-                        SendObject curObj = pack(obj);
-                        while (!aesSendQueue.offer(curObj)) ;
-                        //logger.info("Send queue full");
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-        */
 
         Runnable packer = () -> {
             try {
@@ -125,7 +123,7 @@ public class AESPipeline extends Pipeline {
                 SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE);
+                        AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, j);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
                         while (aesSendQueue.offer(sendObj) == false) ;
                         //logger.info("Pack queue full");
@@ -145,7 +143,7 @@ public class AESPipeline extends Pipeline {
                 while (!done) {
                     AESSendObject obj;
                     while ((obj = (AESSendObject) AESPipeline.getSendQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
+                    if (obj.getFilename() == null) {
                         done = true;
                     } else {
                         send(obj);
@@ -176,53 +174,6 @@ public class AESPipeline extends Pipeline {
             }
         };
 
-        /*
-        Runnable unpacker = () -> {
-            try {
-                boolean done = false;
-                SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
-                while (!done) {
-                    AESRecvObject obj;
-                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                        AESUnpackObject endNode = new AESUnpackObject(null);
-                        while (!aesUnpackQueue.offer(endNode)) ;
-                    } else {
-                        UnpackObject curObj = unpack(obj);
-                        while (!aesUnpackQueue.offer(curObj)) ;
-                        //logger.info("Unpack queue full");
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        StringBuilder stringBuilder = new StringBuilder();
-        Runnable merger = () -> {
-            try {
-                boolean done = false;
-                int idx = 0;
-                while (!done) {
-                    AESUnpackObject obj;
-                    while ((obj = (AESUnpackObject) AESPipeline.getUnpackQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        if (idx % TRIP_COUNT == 0) {
-                            stringBuilder.append(obj.getData());
-                        }
-                    }
-                    idx++;
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-        */
         StringBuilder stringBuilder = new StringBuilder();
         Runnable unpacker = () -> {
             try {
@@ -231,11 +182,11 @@ public class AESPipeline extends Pipeline {
                 while (!done) {
                     AESRecvObject obj;
                     while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
+                    if (obj.getFilename() == null) {
                         done = true;
                     } else {
+                        AESUnpackObject unpackObj = (AESUnpackObject) unpack(obj);
                         if (idx < size / TILE_SIZE) {
-                            AESUnpackObject unpackObj = (AESUnpackObject) unpack(obj);
                             stringBuilder.append(unpackObj.getData());
                         }
                     }

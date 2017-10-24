@@ -6,17 +6,17 @@ import edu.ucla.cs.cdsc.pipeline.RecvObject;
  * Created by Peter on 10/16/2017.
  */
 public class AESRecvObject extends RecvObject {
-    private byte[] data;
+    private String filename;
 
-    public AESRecvObject(byte[] data) {
-        this.data = data;
+    public AESRecvObject(String filename) {
+        this.filename = filename;
     }
 
-    public byte[] getData() {
-        return data;
+    public String getFilename() {
+        return filename;
     }
 
-    public void setData(byte[] data) {
-        this.data = data;
+    public void setFilename(String filename) {
+        this.filename = filename;
     }
 }

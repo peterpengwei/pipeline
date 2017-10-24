@@ -6,17 +6,17 @@ import edu.ucla.cs.cdsc.pipeline.UnpackObject;
  * Created by Peter on 10/16/2017.
  */
 public class AESUnpackObject extends UnpackObject {
-    private String data;
+    private byte[] data;
 
-    public AESUnpackObject(String data) {
+    public AESUnpackObject(byte[] data) {
         this.data = data;
     }
 
-    public String getData() {
+    public byte[] getData() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setData(byte[] data) {
         this.data = data;
     }
 }
