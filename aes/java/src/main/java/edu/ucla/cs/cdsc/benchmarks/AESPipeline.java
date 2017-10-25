@@ -97,16 +97,17 @@ public class AESPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 int numOfTiles = size / TILE_SIZE;
-                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                //SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                     for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
-                        while (!aesSendQueue.offer(sendObj)) ;
+                        send(sendObj);
+                        //while (!aesSendQueue.offer(sendObj)) ;
                     }
                 }
-                AESSendObject endNode = new AESSendObject(null);
-                while (aesSendQueue.offer(endNode) == false) ;
+                //AESSendObject endNode = new AESSendObject(null);
+                //while (aesSendQueue.offer(endNode) == false) ;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -153,8 +154,8 @@ public class AESPipeline extends Pipeline {
         //splitThread.start();
         Thread packThread = new Thread(packer);
         packThread.start();
-        Thread sendThread = new Thread(sender);
-        sendThread.start();
+        //Thread sendThread = new Thread(sender);
+        //sendThread.start();
         Thread recvThread = new Thread(receiver);
         recvThread.start();
         //Thread unpackThread = new Thread(unpacker);
@@ -165,7 +166,7 @@ public class AESPipeline extends Pipeline {
         try {
             //splitThread.join();
             packThread.join();
-            sendThread.join();
+            //sendThread.join();
             recvThread.join();
             //unpackThread.join();
             //mergeThread.join();
