@@ -139,35 +139,14 @@ public class AESPipeline extends Pipeline {
                 SpscLinkedQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        RecvObject curObj = receive(server);
+                        AESRecvObject curObj = (AESRecvObject) receive(server);
                         while (!aesRecvQueue.offer(curObj)) ;
+                        System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
                         //logger.info("Recv queue full");
                     }
                 }
                 AESRecvObject endNode = new AESRecvObject(null);
                 while (!aesRecvQueue.offer(endNode)) ;
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        //byte[] finalData = new byte[size];
-        Runnable unpacker = () -> {
-            try {
-                boolean done = false;
-                SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
-                int idx = 0;
-                while (!done) {
-                    AESRecvObject obj;
-                    while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        System.arraycopy(obj.getData(), 0, finalData, idx, TILE_SIZE);
-                        idx = (idx + TILE_SIZE) % size;
-                    }
-                }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
@@ -182,8 +161,8 @@ public class AESPipeline extends Pipeline {
         sendThread.start();
         Thread recvThread = new Thread(receiver);
         recvThread.start();
-        Thread unpackThread = new Thread(unpacker);
-        unpackThread.start();
+        //Thread unpackThread = new Thread(unpacker);
+        //unpackThread.start();
         //Thread mergeThread = new Thread(merger);
         //mergeThread.start();
 
@@ -192,7 +171,7 @@ public class AESPipeline extends Pipeline {
             packThread.join();
             sendThread.join();
             recvThread.join();
-            unpackThread.join();
+            //unpackThread.join();
             //mergeThread.join();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
