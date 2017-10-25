@@ -17,6 +17,7 @@ public class AESPipeline extends Pipeline {
     private String inputData;
     private int size;
     private int repeatFactor;
+    private byte[] finalData;
 
     public AESPipeline() {
         this("", 0, 0);
@@ -26,6 +27,7 @@ public class AESPipeline extends Pipeline {
         this.inputData = inputData;
         this.size = size;
         this.repeatFactor = repeatFactor;
+        this.finalData = new byte[size];
     }
 
     @Override
@@ -50,7 +52,7 @@ public class AESPipeline extends Pipeline {
             socket.getOutputStream().write(data);
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
-            socket.close();
+            //socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -93,7 +95,7 @@ public class AESPipeline extends Pipeline {
 
         Runnable splitter = () -> {
             try {
-                int numOfTiles = (int) (size / TILE_SIZE);
+                int numOfTiles = size / TILE_SIZE;
                 SpscLinkedQueue<PackObject> aesPackQueue = AESPipeline.getPackQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
@@ -170,7 +172,7 @@ public class AESPipeline extends Pipeline {
             }
         };
 
-        byte[] finalData = new byte[size];
+        //byte[] finalData = new byte[size];
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
@@ -184,29 +186,6 @@ public class AESPipeline extends Pipeline {
                     } else {
                         System.arraycopy(obj.getData(), 0, finalData, idx, TILE_SIZE);
                         idx = (idx + TILE_SIZE) % size;
-                    }
-                }
-            } catch (Exception e) {
-                logger.severe("Caught exception: " + e);
-                e.printStackTrace();
-            }
-        };
-
-        StringBuilder stringBuilder = new StringBuilder();
-        Runnable merger = () -> {
-            try {
-                boolean done = false;
-                int idx = 0;
-                int numOfTiles = size / TILE_SIZE;
-                while (!done) {
-                    AESUnpackObject obj;
-                    while ((obj = (AESUnpackObject) AESPipeline.getUnpackQueue().poll()) == null) ;
-                    if (obj.getData() == null) {
-                        done = true;
-                    } else {
-                        if (idx++ < numOfTiles) {
-                            stringBuilder.append(obj.getData());
-                        }
                     }
                 }
             } catch (Exception e) {

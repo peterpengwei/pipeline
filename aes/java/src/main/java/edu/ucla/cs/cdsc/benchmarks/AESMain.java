@@ -29,7 +29,6 @@ public class AESMain {
         String inputData = "";
         try {
             FileInputStream inputStream = new FileInputStream(inputFile);
-            Path inputPath = Paths.get(inputFile);
             byte[] bytes = new byte[size];
             inputStream.read(bytes, 0, size);
             inputData = new String(bytes);
