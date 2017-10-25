@@ -3,8 +3,6 @@ package edu.ucla.cs.cdsc.benchmarks;
 import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscLinkedQueue;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -172,21 +170,20 @@ public class AESPipeline extends Pipeline {
             }
         };
 
+        byte[] finalData = new byte[size];
         Runnable unpacker = () -> {
             try {
                 boolean done = false;
                 SpscLinkedQueue<UnpackObject> aesUnpackQueue = AESPipeline.getUnpackQueue();
+                int idx = 0;
                 while (!done) {
                     AESRecvObject obj;
                     while ((obj = (AESRecvObject) AESPipeline.getRecvQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
-                        AESUnpackObject endNode = new AESUnpackObject(null);
-                        while (!aesUnpackQueue.offer(endNode)) ;
                     } else {
-                        UnpackObject curObj = unpack(obj);
-                        while (!aesUnpackQueue.offer(curObj)) ;
-                        //logger.info("Unpack queue full");
+                        System.arraycopy(obj.getData(), 0, finalData, idx, TILE_SIZE);
+                        idx = (idx + TILE_SIZE) % size;
                     }
                 }
             } catch (Exception e) {
@@ -228,8 +225,8 @@ public class AESPipeline extends Pipeline {
         recvThread.start();
         Thread unpackThread = new Thread(unpacker);
         unpackThread.start();
-        Thread mergeThread = new Thread(merger);
-        mergeThread.start();
+        //Thread mergeThread = new Thread(merger);
+        //mergeThread.start();
 
         try {
             splitThread.join();
@@ -237,7 +234,7 @@ public class AESPipeline extends Pipeline {
             sendThread.join();
             recvThread.join();
             unpackThread.join();
-            mergeThread.join();
+            //mergeThread.join();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -245,6 +242,7 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        return stringBuilder.toString();
+        //return stringBuilder.toString();
+        return new String(finalData);
     }
 }
