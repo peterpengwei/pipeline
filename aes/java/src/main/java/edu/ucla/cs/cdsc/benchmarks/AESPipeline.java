@@ -4,6 +4,7 @@ import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.logging.Logger;
@@ -154,7 +155,9 @@ public class AESPipeline extends Pipeline {
         };
 
         Runnable receiver = () -> {
-            try (ServerSocket server = new ServerSocket(9520)) {
+            try (ServerSocket server = new ServerSocket()) {
+                server.setReuseAddress(true);
+                server.bind(new InetSocketAddress(9520));
                 int numOfTiles = size / TILE_SIZE;
                 SpscLinkedQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < repeatFactor; j++) {
