@@ -56,7 +56,7 @@ void gather(void) {
 	    int total_size = TILE;
 	    int n;
 	    char* p = buffer;
-            while ((n = read(instance, buffer, total_size)) > 0) {
+            while ((n = read(instance, p, total_size)) > 0) {
 	        if (n == total_size) break;
 		p += n;
 		total_size -= n;
