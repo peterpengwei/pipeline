@@ -9,10 +9,11 @@
 #include <boost/atomic.hpp>
 
 #define PORT 6070
-#define TILE (1 << 20)
+#define TILE (1 << 24)
+#define QUEUE_CAPACITY 64
 
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > input_queue;
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > output_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
 
 void gather(void) {
 
@@ -55,7 +56,7 @@ void gather(void) {
 	    int total_size = TILE;
 	    int n;
 	    char* p = buffer;
-            while ((n = read(instance, buffer, total_size)) > 0) {
+            while ((n = read(instance, p, total_size)) > 0) {
 	        if (n == total_size) break;
 		p += n;
 		total_size -= n;

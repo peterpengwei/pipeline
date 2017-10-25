@@ -8,10 +8,20 @@ import edu.ucla.cs.cdsc.pipeline.PackObject;
 public class AESPackObject extends PackObject {
     private String data;
     private int startIdx;
+    private int endIdx;
 
-    public AESPackObject(String data, int startIdx) {
+    public AESPackObject(String data, int startIdx, int endIdx) {
         this.data = data;
         this.startIdx = startIdx;
+        this.endIdx = endIdx;
+    }
+
+    public int getEndIdx() {
+        return endIdx;
+    }
+
+    public void setEndIdx(int endIdx) {
+        this.endIdx = endIdx;
     }
 
     public int getStartIdx() {
