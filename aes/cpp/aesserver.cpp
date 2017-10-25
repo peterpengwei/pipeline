@@ -9,10 +9,11 @@
 #include <boost/atomic.hpp>
 
 #define PORT 6070
-#define TILE (1 << 20)
+#define TILE (1 << 24)
+#define QUEUE_CAPACITY 64
 
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > input_queue;
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > output_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
 
 void gather(void) {
 
@@ -52,10 +53,14 @@ void gather(void) {
         }
         else {
             char* buffer = new char[TILE];
-            read(instance, buffer, TILE);
-	    char tail[64];
+	    int total_size = TILE;
 	    int n;
-	    while ((n = read(instance, tail, sizeof(tail))) > 0) ;
+	    char* p = buffer;
+            while ((n = read(instance, p, total_size)) > 0) {
+	        if (n == total_size) break;
+		p += n;
+		total_size -= n;
+	    }
 	    close(instance);
             while (!input_queue.push(buffer)) ;
 	    num_gather++;
@@ -72,7 +77,7 @@ void compute(void) {
     while (true) {
         char* buffer = NULL;
         while (!input_queue.pop(buffer)) ;
-        for (int i=0; i<TILE; i++) buffer[i] = toupper(buffer[i]);
+        //for (int i=0; i<TILE; i++) buffer[i] = toupper(buffer[i]);
         while (!output_queue.push(buffer)) ;
 	num_compute++;
 	//if (num_compute % 10 == 0)
