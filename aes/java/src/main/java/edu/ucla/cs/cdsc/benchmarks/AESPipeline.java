@@ -91,16 +91,39 @@ public class AESPipeline extends Pipeline {
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(9520));
             int numOfTiles = size / TILE_SIZE;
+
+            long splitTime = 0;
+            long packTime = 0;
+            long sendTime = 0;
+            long recvTime = 0;
+            long unpackTime = 0;
+
             for (int j = 0; j < repeatFactor; j++) {
                 for (int i = 0; i < numOfTiles; i++) {
+                    long startTime = System.nanoTime();
                     AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
+                    long splitDoneTime = System.nanoTime();
+                    splitTime += splitDoneTime - startTime;
                     AESSendObject sendObj = (AESSendObject) pack(packObj);
+                    long packDoneTime = System.nanoTime();
+                    packTime += packDoneTime - splitDoneTime;
                     send(sendObj);
+                    long sendDoneTime = System.nanoTime();
+                    sendTime += sendDoneTime - packDoneTime;
                     AESRecvObject recvObj = (AESRecvObject) receive(server);
+                    long recvDoneTime = System.nanoTime();
+                    recvTime += recvDoneTime - sendDoneTime;
                     //AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
                     System.arraycopy(recvObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
+                    long unpackDoneTime = System.nanoTime();
+                    unpackTime += unpackDoneTime - recvDoneTime;
                 }
             }
+            System.out.println("[Split] " + splitTime / 1.0e9);
+            System.out.println("[Pack] " + packTime / 1.0e9);
+            System.out.println("[Send] " + sendTime / 1.0e9);
+            System.out.println("[Recv] " + recvTime / 1.0e9);
+            System.out.println("[Unpack] " + unpackTime / 1.0e9);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
