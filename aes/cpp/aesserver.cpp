@@ -9,10 +9,11 @@
 #include <boost/atomic.hpp>
 
 #define PORT 6070
-#define TILE (1 << 20)
+#define TILE (1 << 24)
+#define QUEUE_CAPACITY 64
 
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > input_queue;
-boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<32> > output_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
+boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
 
 void gather(void) {
 

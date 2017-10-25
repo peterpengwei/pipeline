@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * Created by Peter on 10/10/2017.
  */
 public class AESPipeline extends Pipeline {
-    private static final int TILE_SIZE = (1 << 20);
+    private static final int TILE_SIZE = (1 << 24);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
     private String inputData;
     private int size;
