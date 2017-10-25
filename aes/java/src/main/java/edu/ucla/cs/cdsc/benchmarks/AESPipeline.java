@@ -136,17 +136,13 @@ public class AESPipeline extends Pipeline {
                 server.setReuseAddress(true);
                 server.bind(new InetSocketAddress(9520));
                 int numOfTiles = size / TILE_SIZE;
-                SpscLinkedQueue<RecvObject> aesRecvQueue = AESPipeline.getRecvQueue();
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESRecvObject curObj = (AESRecvObject) receive(server);
-                        while (!aesRecvQueue.offer(curObj)) ;
                         System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
                         //logger.info("Recv queue full");
                     }
                 }
-                AESRecvObject endNode = new AESRecvObject(null);
-                while (!aesRecvQueue.offer(endNode)) ;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
                 e.printStackTrace();
