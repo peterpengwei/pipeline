@@ -3,9 +3,13 @@ package edu.ucla.cs.cdsc.benchmarks;
 import edu.ucla.cs.cdsc.pipeline.*;
 
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.logging.Logger;
 
 /**
@@ -104,9 +108,19 @@ public class AESPipeline extends Pipeline {
                     AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                     long splitDoneTime = System.nanoTime();
                     splitTime += splitDoneTime - startTime;
-                    AESSendObject sendObj = (AESSendObject) pack(packObj);
+                    String filename = System.getProperty("java.io.tmpdir") + "/aes_"
+                            + Integer.toString(i) + "_" + Integer.toString(j) + ".tmp";
+                    RandomAccessFile raf = new RandomAccessFile(filename, "rw");
+                    FileChannel channel = raf.getChannel();
+                    MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
+                    buffer.order(ByteOrder.LITTLE_ENDIAN);
+                    int idx = packObj.getStartIdx();
+                    String data = packObj.getData();
+                    for (int k=0; k<TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
+                    //AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long packDoneTime = System.nanoTime();
                     packTime += packDoneTime - splitDoneTime;
+                    AESSendObject sendObj = (AESSendObject) pack(packObj);
                     send(sendObj);
                     long sendDoneTime = System.nanoTime();
                     sendTime += sendDoneTime - packDoneTime;
