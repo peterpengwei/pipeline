@@ -106,6 +106,7 @@ public class AESPipeline extends Pipeline {
                 for (int i = 0; i < numOfTiles; i++) {
                     long startTime = System.nanoTime();
                     AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
+                    AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long splitDoneTime = System.nanoTime();
                     splitTime += splitDoneTime - startTime;
                     String filename = System.getProperty("java.io.tmpdir") + "/aes_"
@@ -114,13 +115,13 @@ public class AESPipeline extends Pipeline {
                     FileChannel channel = raf.getChannel();
                     MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
                     buffer.order(ByteOrder.LITTLE_ENDIAN);
-                    int idx = packObj.getStartIdx();
-                    String data = packObj.getData();
-                    for (int k=0; k<TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
+                    buffer.put(sendObj.getData());
+                    //int idx = packObj.getStartIdx();
+                    //String data = packObj.getData();
+                    //for (int k=0; k<TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
                     //AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long packDoneTime = System.nanoTime();
                     packTime += packDoneTime - splitDoneTime;
-                    AESSendObject sendObj = (AESSendObject) pack(packObj);
                     send(sendObj);
                     long sendDoneTime = System.nanoTime();
                     sendTime += sendDoneTime - packDoneTime;
