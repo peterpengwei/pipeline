@@ -9,8 +9,9 @@
 #include <boost/atomic.hpp>
 
 #define PORT 6070
-#define TILE (1 << 24)
 #define QUEUE_CAPACITY 64
+
+int TILE;
 
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
@@ -120,6 +121,14 @@ void scatter(void) {
 }
 
 int main(int argc, char* argv[]) {
+
+    if (argc != 2) {
+	std::cout << "Wrong command-line format" << std::endl;
+	exit(1);
+    }
+
+    TILE = atoi(argv[1]);
+    std::cout << "TILE is " << TILE << std::endl;
 
     boost::thread gather_thread(gather);
     boost::thread compute_thread(compute);
