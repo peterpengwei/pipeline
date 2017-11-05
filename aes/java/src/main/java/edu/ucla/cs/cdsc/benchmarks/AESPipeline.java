@@ -16,21 +16,18 @@ import java.util.logging.Logger;
  * Created by Peter on 10/10/2017.
  */
 public class AESPipeline extends Pipeline {
-    private static final int TILE_SIZE = (1 << 24);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
     private String inputData;
     private int size;
     private int repeatFactor;
+    private int TILE_SIZE;
     private byte[] finalData;
 
-    public AESPipeline() {
-        this("", 0, 0);
-    }
-
-    public AESPipeline(String inputData, int size, int repeatFactor) {
+    public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
         this.size = size;
         this.repeatFactor = repeatFactor;
+        this.TILE_SIZE = TILE_SIZE;
         this.finalData = new byte[size];
     }
 
@@ -38,7 +35,6 @@ public class AESPipeline extends Pipeline {
     public SendObject pack(PackObject obj) {
         AESPackObject aesPackObject = (AESPackObject) obj;
         int startIdx = aesPackObject.getStartIdx();
-        int endIdx = aesPackObject.getEndIdx();
         String data = aesPackObject.getData();
         byte[] output = new byte[TILE_SIZE];
         for (int i=0; i<TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
@@ -55,6 +51,40 @@ public class AESPipeline extends Pipeline {
             socket.getOutputStream().write(data);
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
+            e.printStackTrace();
+        }
+    }
+
+    public void putSingle(AESPackObject obj, int i, int j) {
+        String filename = System.getProperty("java.io.tmpdir") + "/aes_"
+                + Integer.toString(i) + "_" + Integer.toString(j) + ".sig";
+        try {
+            RandomAccessFile raf = new RandomAccessFile(filename, "rw");
+            FileChannel channel = raf.getChannel();
+            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            int idx = obj.getStartIdx();
+            String data = obj.getData();
+            for (int k = 0; k < TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void putArray(AESPackObject obj, int i, int j) {
+        String filename = System.getProperty("java.io.tmpdir") + "/aes_"
+                + Integer.toString(i) + "_" + Integer.toString(j) + ".arr";
+        try {
+            RandomAccessFile raf = new RandomAccessFile(filename, "rw");
+            FileChannel channel = raf.getChannel();
+            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            int idx = obj.getStartIdx();
+            String data = obj.getData();
+            byte[] array = new byte[TILE_SIZE];
+            for (int k = 0; k < TILE_SIZE; k++) array[k] = (byte) data.charAt(idx++);
+            buffer.put(array);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -94,40 +124,44 @@ public class AESPipeline extends Pipeline {
         try (ServerSocket server = new ServerSocket()) {
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(9520));
-            int numOfTiles = size / TILE_SIZE;
 
             long splitTime = 0;
+            long putSingleTime = 0;
+            long putArrayTime = 0;
             long packTime = 0;
             long sendTime = 0;
             long recvTime = 0;
             long unpackTime = 0;
 
+            int numOfTiles = size / TILE_SIZE;
+
             for (int j = 0; j < repeatFactor; j++) {
                 for (int i = 0; i < numOfTiles; i++) {
                     long startTime = System.nanoTime();
                     AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
-                    AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long splitDoneTime = System.nanoTime();
                     splitTime += splitDoneTime - startTime;
-                    String filename = System.getProperty("java.io.tmpdir") + "/aes_"
-                            + Integer.toString(i) + "_" + Integer.toString(j) + ".tmp";
-                    RandomAccessFile raf = new RandomAccessFile(filename, "rw");
-                    FileChannel channel = raf.getChannel();
-                    MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
-                    buffer.order(ByteOrder.LITTLE_ENDIAN);
-                    buffer.put(sendObj.getData());
-                    //int idx = packObj.getStartIdx();
-                    //String data = packObj.getData();
-                    //for (int k=0; k<TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
-                    //AESSendObject sendObj = (AESSendObject) pack(packObj);
+
+                    AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long packDoneTime = System.nanoTime();
                     packTime += packDoneTime - splitDoneTime;
+
+                    putSingle(packObj, i, j);
+                    long putSingleDoneTime = System.nanoTime();
+                    putSingleTime += putSingleDoneTime - packDoneTime;
+
+                    putArray(packObj, i, j);
+                    long putArrayDoneTime = System.nanoTime();
+                    putArrayTime += putArrayDoneTime - putSingleDoneTime;
+
                     send(sendObj);
                     long sendDoneTime = System.nanoTime();
-                    sendTime += sendDoneTime - packDoneTime;
+                    sendTime += sendDoneTime - putArrayDoneTime;
+
                     AESRecvObject recvObj = (AESRecvObject) receive(server);
                     long recvDoneTime = System.nanoTime();
                     recvTime += recvDoneTime - sendDoneTime;
+
                     //AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
                     System.arraycopy(recvObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
                     long unpackDoneTime = System.nanoTime();
@@ -136,6 +170,8 @@ public class AESPipeline extends Pipeline {
             }
             System.out.println("[Split] " + splitTime / 1.0e9);
             System.out.println("[Pack] " + packTime / 1.0e9);
+            System.out.println("[Single] " + putSingleTime / 1.0e9);
+            System.out.println("[Array] " + putArrayTime / 1.0e9);
             System.out.println("[Send] " + sendTime / 1.0e9);
             System.out.println("[Recv] " + recvTime / 1.0e9);
             System.out.println("[Unpack] " + unpackTime / 1.0e9);
