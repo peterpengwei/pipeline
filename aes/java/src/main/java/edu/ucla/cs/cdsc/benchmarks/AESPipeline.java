@@ -55,7 +55,7 @@ public class AESPipeline extends Pipeline {
         }
     }
 
-    public void putSingle(AESPackObject obj, int i, int j) {
+    public void put(AESPackObject obj, int i, int j) {
         String filename = System.getProperty("java.io.tmpdir") + "/aes_"
                 + Integer.toString(i) + "_" + Integer.toString(j) + ".sig";
         try {
@@ -125,9 +125,7 @@ public class AESPipeline extends Pipeline {
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(9520));
 
-            long splitTime = 0;
-            long putSingleTime = 0;
-            long putArrayTime = 0;
+            long putTime = 0;
             long packTime = 0;
             long sendTime = 0;
             long recvTime = 0;
@@ -139,39 +137,34 @@ public class AESPipeline extends Pipeline {
                 for (int i = 0; i < numOfTiles; i++) {
                     long startTime = System.nanoTime();
                     AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
-                    long splitDoneTime = System.nanoTime();
-                    splitTime += splitDoneTime - startTime;
-
                     AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long packDoneTime = System.nanoTime();
-                    packTime += packDoneTime - splitDoneTime;
+                    packTime += packDoneTime - startTime;
 
-                    putSingle(packObj, i, j);
+                    startTime = System.nanoTime();
+                    put(packObj, i, j);
                     long putSingleDoneTime = System.nanoTime();
-                    putSingleTime += putSingleDoneTime - packDoneTime;
+                    putTime += putSingleDoneTime - startTime;
 
-                    putArray(packObj, i, j);
-                    long putArrayDoneTime = System.nanoTime();
-                    putArrayTime += putArrayDoneTime - putSingleDoneTime;
-
+                    startTime = System.nanoTime();
                     send(sendObj);
                     long sendDoneTime = System.nanoTime();
-                    sendTime += sendDoneTime - putArrayDoneTime;
+                    sendTime += sendDoneTime - startTime;
 
+                    startTime = System.nanoTime();
                     AESRecvObject recvObj = (AESRecvObject) receive(server);
                     long recvDoneTime = System.nanoTime();
-                    recvTime += recvDoneTime - sendDoneTime;
+                    recvTime += recvDoneTime - startTime;
 
+                    startTime = System.nanoTime();
                     //AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
                     System.arraycopy(recvObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
                     long unpackDoneTime = System.nanoTime();
-                    unpackTime += unpackDoneTime - recvDoneTime;
+                    unpackTime += unpackDoneTime - startTime;
                 }
             }
-            System.out.println("[Split] " + splitTime / 1.0e9);
             System.out.println("[Pack] " + packTime / 1.0e9);
-            System.out.println("[Single] " + putSingleTime / 1.0e9);
-            System.out.println("[Array] " + putArrayTime / 1.0e9);
+            System.out.println("[Single] " + putTime / 1.0e9);
             System.out.println("[Send] " + sendTime / 1.0e9);
             System.out.println("[Recv] " + recvTime / 1.0e9);
             System.out.println("[Unpack] " + unpackTime / 1.0e9);

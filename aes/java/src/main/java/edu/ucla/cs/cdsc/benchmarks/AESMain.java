@@ -26,7 +26,7 @@ public class AESMain {
         String outputFile = args[1];
         int size = Integer.parseInt(args[2]);
         int repeatFactor = Integer.parseInt(args[3]);
-        final int TILE_SIZE = Integer.parseInt(args[4]);
+        int TILE_SIZE = Integer.parseInt(args[4]);
 
         String inputData = "";
         try {
