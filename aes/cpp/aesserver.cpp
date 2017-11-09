@@ -142,6 +142,7 @@ int main(int argc, char* argv[]) {
     }
 
     signal(SIGINT, signal_callback_handler);
+    signal(SIGTERM, signal_callback_handler);
 
     TILE_SIZE = atoi(argv[1]);
 
