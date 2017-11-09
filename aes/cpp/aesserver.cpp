@@ -7,14 +7,29 @@
 #include <cctype>
 #include <string>
 #include <boost/atomic.hpp>
+#include <signal.h>
 
 #define PORT 6070
-#define QUEUE_CAPACITY 64
+#define QUEUE_CAPACITY 32
+#define NUM_BUFFERS ((QUEUE_CAPACITY)*(2))
 
-int TILE;
+int TILE_SIZE;
+
+char* buffers[NUM_BUFFERS];
+int buf_ptr;
 
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
+
+void signal_callback_handler(int signum) {
+    std::cout << "Caught signal " << signum << std::endl;
+
+    for (int i=0; i<NUM_BUFFERS; i++) {
+	delete [] buffers[i];
+    }
+
+    exit(signum);
+}
 
 void gather(void) {
 
@@ -48,13 +63,15 @@ void gather(void) {
     int addrlen = sizeof(address);
     int num_gather = 0;
     while (true) {
+	while (input_queue.write_available() <= 0) ;
         int instance = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen);
         if (instance < 0) {
             std::cerr << "Accept failed" << std::endl;
         }
         else {
-            char* buffer = new char[TILE];
-	    int total_size = TILE;
+            char* buffer = buffers[buf_ptr];
+	    buf_ptr = (buf_ptr + 1) % NUM_BUFFERS;
+	    int total_size = TILE_SIZE;
 	    int n;
 	    char* p = buffer;
             while ((n = read(instance, p, total_size)) > 0) {
@@ -63,7 +80,7 @@ void gather(void) {
 		total_size -= n;
 	    }
 	    close(instance);
-            while (!input_queue.push(buffer)) ;
+            input_queue.push(buffer);
 	    num_gather++;
 	    //if (num_gather % 10 == 0)
 	    //    std::cout << "Received " << num_gather << " requests" << std::endl;
@@ -72,13 +89,11 @@ void gather(void) {
 }
 
 void compute(void) {
-    char* buffer = NULL;
-    
     int num_compute = 0;
     while (true) {
         char* buffer = NULL;
         while (!input_queue.pop(buffer)) ;
-        //for (int i=0; i<TILE; i++) buffer[i] = toupper(buffer[i]);
+        //for (int i=0; i<TILE_SIZE; i++) buffer[i] = toupper(buffer[i]);
         while (!output_queue.push(buffer)) ;
 	num_compute++;
 	//if (num_compute % 10 == 0)
@@ -110,8 +125,7 @@ void scatter(void) {
         if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
             std::cerr << "Connect failed" << std::endl;
         }
-        write(sock, buffer, TILE);
-        delete [] buffer;
+        write(sock, buffer, TILE_SIZE);
 	close(sock);
 
 	num_scatter++;
@@ -127,8 +141,15 @@ int main(int argc, char* argv[]) {
 	exit(1);
     }
 
-    TILE = atoi(argv[1]);
-    std::cout << "TILE is " << TILE << std::endl;
+    signal(SIGINT, signal_callback_handler);
+
+    TILE_SIZE = atoi(argv[1]);
+
+    int i;
+    for (i=0; i<NUM_BUFFERS; i++) {
+	buffers[i] = new char[TILE_SIZE];
+    }
+    buf_ptr = 0;
 
     boost::thread gather_thread(gather);
     boost::thread compute_thread(compute);
@@ -137,6 +158,10 @@ int main(int argc, char* argv[]) {
     gather_thread.join();
     compute_thread.join();
     scatter_thread.join();
+
+    for (i=0; i<NUM_BUFFERS; i++) {
+	delete [] buffers[i];
+    }
 
     return 0;
 }
