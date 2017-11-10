@@ -75,7 +75,7 @@ void gather(void) {
 	    int n;
 	    char* p = buffer;
             while ((n = read(instance, p, total_size)) > 0) {
-	        if (n == total_size) break;
+	        if (n >= total_size) break;
 		p += n;
 		total_size -= n;
 	    }
@@ -125,7 +125,14 @@ void scatter(void) {
         if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
             std::cerr << "Connect failed" << std::endl;
         }
-        write(sock, buffer, TILE_SIZE);
+	char* p = buffer;
+	int total_size = TILE_SIZE;
+	int n;
+        while ((n = write(sock, buffer, TILE_SIZE)) > 0) {
+	    if (n >= total_size) break;
+	    p += n;
+	    total_size -= n;
+	}
 	close(sock);
 
 	num_scatter++;
