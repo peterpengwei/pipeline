@@ -11,6 +11,9 @@ import java.net.SocketAddress;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
@@ -66,9 +69,10 @@ public class AESPipeline extends Pipeline {
         }
     }
 
-    public void put(AESPackObject obj, int i, int j) {
+    public long put(AESPackObject obj, int i, int j) {
         String filename = System.getProperty("java.io.tmpdir") + "/aes_"
                 + Integer.toString(i) + "_" + Integer.toString(j) + ".sig";
+        long retTime;
         try {
             RandomAccessFile raf = new RandomAccessFile(filename, "rw");
             FileChannel channel = raf.getChannel();
@@ -77,27 +81,14 @@ public class AESPipeline extends Pipeline {
             int idx = obj.getStartIdx();
             String data = obj.getData();
             for (int k = 0; k < TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
+            retTime = System.nanoTime();
+            raf.close();
+            Files.delete(Paths.get(filename));
         } catch (Exception e) {
+            retTime = System.nanoTime();
             e.printStackTrace();
         }
-    }
-
-    public void putArray(AESPackObject obj, int i, int j) {
-        String filename = System.getProperty("java.io.tmpdir") + "/aes_"
-                + Integer.toString(i) + "_" + Integer.toString(j) + ".arr";
-        try {
-            RandomAccessFile raf = new RandomAccessFile(filename, "rw");
-            FileChannel channel = raf.getChannel();
-            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, TILE_SIZE);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            int idx = obj.getStartIdx();
-            String data = obj.getData();
-            byte[] array = new byte[TILE_SIZE];
-            for (int k = 0; k < TILE_SIZE; k++) array[k] = (byte) data.charAt(idx++);
-            buffer.put(array);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        return retTime;
     }
 
     @Override
@@ -137,11 +128,11 @@ public class AESPipeline extends Pipeline {
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(9520));
 
-            long putTime = 0;
-            long packTime = 0;
-            long sendTime = 0;
-            long recvTime = 0;
-            long unpackTime = 0;
+            long putTime = 0L;
+            long packTime = 0L;
+            long sendTime = 0L;
+            long recvTime = 0L;
+            long unpackTime = 0L;
 
             int numOfTiles = size / TILE_SIZE;
 
@@ -154,8 +145,7 @@ public class AESPipeline extends Pipeline {
                     packTime += packDoneTime - startTime;
 
                     startTime = System.nanoTime();
-                    put(packObj, i, j);
-                    long putSingleDoneTime = System.nanoTime();
+                    long putSingleDoneTime = put(packObj, i, j);
                     putTime += putSingleDoneTime - startTime;
 
                     startTime = System.nanoTime();
