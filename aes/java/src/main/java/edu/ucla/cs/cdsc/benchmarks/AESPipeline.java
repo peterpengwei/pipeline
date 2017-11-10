@@ -123,9 +123,9 @@ public class AESPipeline extends Pipeline {
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
 
-        try (ServerSocket server = new ServerSocket(9520)) {
-            //server.setReuseAddress(true);
-            //server.bind(new InetSocketAddress(9520));
+        try (ServerSocket server = new ServerSocket()) {
+            server.setReuseAddress(true);
+            server.bind(new InetSocketAddress(9520));
 
             long putTime = 0;
             long packTime = 0;
