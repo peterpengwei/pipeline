@@ -7,6 +7,7 @@ import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -37,28 +38,28 @@ public class AESPipeline extends Pipeline {
         int startIdx = aesPackObject.getStartIdx();
         String data = aesPackObject.getData();
         byte[] output = new byte[TILE_SIZE];
-        for (int i=0; i<TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
+        for (int i = 0; i < TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
         return new AESSendObject(output);
     }
 
     @Override
     public void send(SendObject obj) {
-	try {
+        try {
             Socket socket = new Socket();
-	    SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
-	    while (true) {
-		try {
-	            socket.connect(address);
-		    break;
-		} catch (Exception e) {
-		}
-	    }
+            SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
+            while (true) {
+                try {
+                    socket.connect(address);
+                    break;
+                } catch (Exception e) {
+                }
+            }
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
             socket.getOutputStream().write(data);
-	    socket.close();
+            socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -113,7 +114,7 @@ public class AESPipeline extends Pipeline {
                 totalSize -= n;
                 offset += n;
             }
-	    incoming.close();
+            incoming.close();
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
@@ -147,7 +148,7 @@ public class AESPipeline extends Pipeline {
             for (int j = 0; j < repeatFactor; j++) {
                 for (int i = 0; i < numOfTiles; i++) {
                     long startTime = System.nanoTime();
-                    AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
+                    AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i + 1) * TILE_SIZE);
                     AESSendObject sendObj = (AESSendObject) pack(packObj);
                     long packDoneTime = System.nanoTime();
                     packTime += packDoneTime - startTime;
@@ -169,7 +170,7 @@ public class AESPipeline extends Pipeline {
 
                     startTime = System.nanoTime();
                     //AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
-                    System.arraycopy(recvObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
+                    System.arraycopy(recvObj.getData(), 0, finalData, i * TILE_SIZE, TILE_SIZE);
                     long unpackDoneTime = System.nanoTime();
                     unpackTime += unpackDoneTime - startTime;
                 }
