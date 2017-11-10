@@ -8,6 +8,7 @@
 #include <string>
 #include <boost/atomic.hpp>
 #include <signal.h>
+#include <errno.h>
 
 #define PORT 6070
 #define QUEUE_CAPACITY 32
@@ -40,9 +41,8 @@ void gather(void) {
     }
 
     int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         std::cerr << "Setsockopt failed" << std::endl;
-        exit(EXIT_FAILURE);
     }
 
     sockaddr_in address;
@@ -122,9 +122,10 @@ void scatter(void) {
             exit(EXIT_FAILURE);
         }
     
-        if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-            std::cerr << "Connect failed" << std::endl;
-        }
+        while (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) ;
+        //if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        //    std::cerr << "Connect failed with error code " << errno << std::endl;
+        //}
 	char* p = buffer;
 	int total_size = TILE_SIZE;
 	int n;
