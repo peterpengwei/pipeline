@@ -44,11 +44,13 @@ public class AESPipeline extends Pipeline {
     @Override
     public void send(SendObject obj) {
         try (Socket socket = new Socket("localhost", 6070)) {
+            socket.setSoLinger(true, 0);
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
             socket.getOutputStream().write(data);
+            socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -121,9 +123,9 @@ public class AESPipeline extends Pipeline {
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
 
-        try (ServerSocket server = new ServerSocket()) {
-            server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(9520));
+        try (ServerSocket server = new ServerSocket(9520)) {
+            //server.setReuseAddress(true);
+            //server.bind(new InetSocketAddress(9520));
 
             long putTime = 0;
             long packTime = 0;
