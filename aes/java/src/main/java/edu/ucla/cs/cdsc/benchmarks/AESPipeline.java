@@ -43,14 +43,22 @@ public class AESPipeline extends Pipeline {
 
     @Override
     public void send(SendObject obj) {
-        try (Socket socket = new Socket("localhost", 6070)) {
-            socket.setSoLinger(true, 0);
+	try {
+            Socket socket = new Socket();
+	    SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
+	    while (true) {
+		try {
+	            socket.connect(address);
+		    break;
+		} catch (Exception e) {
+		}
+	    }
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
             socket.getOutputStream().write(data);
-            socket.close();
+	    socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -105,6 +113,7 @@ public class AESPipeline extends Pipeline {
                 totalSize -= n;
                 offset += n;
             }
+	    incoming.close();
             return new AESRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
