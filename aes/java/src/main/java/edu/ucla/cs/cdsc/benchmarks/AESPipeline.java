@@ -29,6 +29,8 @@ public class AESPipeline extends Pipeline {
     private int TILE_SIZE;
     private byte[] finalData;
 
+    private long acceptTime;
+
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
         this.size = size;
@@ -99,6 +101,7 @@ public class AESPipeline extends Pipeline {
     @Override
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
+            acceptTime = System.nanoTime();
             byte[] data = new byte[TILE_SIZE];
             //BufferedInputStream in = new BufferedInputStream(incoming.getInputStream());
             //in.read(data, 0, TILE_SIZE);
@@ -158,10 +161,10 @@ public class AESPipeline extends Pipeline {
                     long sendDoneTime = System.nanoTime();
                     sendTime += sendDoneTime - startTime;
 
-                    startTime = System.nanoTime();
+                    //startTime = System.nanoTime();
                     AESRecvObject recvObj = (AESRecvObject) receive(server);
                     long recvDoneTime = System.nanoTime();
-                    recvTime += recvDoneTime - startTime;
+                    recvTime += recvDoneTime - acceptTime;
 
                     startTime = System.nanoTime();
                     //AESUnpackObject unpackObj = (AESUnpackObject) unpack(recvObj);
