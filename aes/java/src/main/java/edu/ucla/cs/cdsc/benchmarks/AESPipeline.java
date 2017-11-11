@@ -1,6 +1,8 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
 import edu.ucla.cs.cdsc.pipeline.*;
+import sun.misc.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -82,8 +84,11 @@ public class AESPipeline extends Pipeline {
             String data = obj.getData();
             for (int k = 0; k < TILE_SIZE; k++) buffer.put((byte) data.charAt(idx++));
             retTime = System.nanoTime();
+            channel.close();
             raf.close();
             Files.delete(Paths.get(filename));
+            Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+            cleaner.clean();
         } catch (Exception e) {
             retTime = System.nanoTime();
             e.printStackTrace();
