@@ -1,6 +1,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 #include <iostream>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -9,10 +10,10 @@
 #include <boost/atomic.hpp>
 #include <signal.h>
 #include <errno.h>
-#include <ctime>
+#include "my_timer.h"
 
 #define PORT 6070
-#define QUEUE_CAPACITY 32
+#define QUEUE_CAPACITY 8
 #define NUM_BUFFERS ((QUEUE_CAPACITY)*(2))
 
 int TILE_SIZE;
@@ -23,7 +24,7 @@ int buf_ptr;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
 
-std::clock_t gather_time, scatter_time;
+timespec gather_time, scatter_time;
 
 void signal_callback_handler(int signum) {
     std::cout << "Caught signal " << signum << std::endl;
@@ -31,8 +32,8 @@ void signal_callback_handler(int signum) {
     for (int i=0; i<NUM_BUFFERS; i++) {
 	delete [] buffers[i];
     }
-    std::cout << "Gather time: " << gather_time / (double) CLOCKS_PER_SEC << std::endl;
-    std::cout << "Scatter time: " << scatter_time / (double) CLOCKS_PER_SEC << std::endl;
+    printTimeSpec(gather_time, "gather_time");
+    printTimeSpec(scatter_time, "scatter_time");
 
     exit(signum);
 }
@@ -74,7 +75,7 @@ void gather(void) {
             std::cerr << "Accept failed" << std::endl;
         }
         else {
-	    std::clock_t start_time = std::clock();
+	    timespec start_time = tic();
             char* buffer = buffers[buf_ptr];
 	    buf_ptr = (buf_ptr + 1) % NUM_BUFFERS;
 	    int total_size = TILE_SIZE;
@@ -86,7 +87,7 @@ void gather(void) {
 		total_size -= n;
 	    }
 	    close(instance);
-	    gather_time += std::clock() - start_time;
+	    gather_time = sum(gather_time, toc(&start_time));
             input_queue.push(buffer);
 	    num_gather++;
 	    //if (num_gather % 10 == 0)
@@ -124,7 +125,7 @@ void scatter(void) {
         char* buffer = NULL;
         output_queue.pop(buffer);
 
-	std::clock_t start_time = std::clock();
+	timespec start_time = tic();
         int sock;
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             std::cerr << "Socket failed" << std::endl;
@@ -144,7 +145,7 @@ void scatter(void) {
 	    total_size -= n;
 	}
 	close(sock);
-	scatter_time += std::clock() - start_time;
+	scatter_time = sum(scatter_time, toc(&start_time));
 
 	num_scatter++;
 	//if (num_scatter % 10 == 0)
@@ -170,8 +171,10 @@ int main(int argc, char* argv[]) {
     }
     buf_ptr = 0;
 
-    gather_time = 0;
-    scatter_time = 0;
+    gather_time.tv_nsec = 0;
+    gather_time.tv_sec = 0;
+    scatter_time.tv_nsec = 0;
+    scatter_time.tv_sec = 0;
 
     boost::thread gather_thread(gather);
     boost::thread compute_thread(compute);
@@ -184,8 +187,8 @@ int main(int argc, char* argv[]) {
     for (i=0; i<NUM_BUFFERS; i++) {
 	delete [] buffers[i];
     }
-    std::cout << "Gather time: " << gather_time / (double) CLOCKS_PER_SEC << std::endl;
-    std::cout << "Scatter time: " << scatter_time / (double) CLOCKS_PER_SEC << std::endl;
+    printTimeSpec(gather_time, "gather_time");
+    printTimeSpec(scatter_time, "scatter_time");
 
     return 0;
 }
