@@ -9,6 +9,7 @@
 #include <boost/atomic.hpp>
 #include <signal.h>
 #include <errno.h>
+#include <ctime>
 
 #define PORT 6070
 #define QUEUE_CAPACITY 32
@@ -22,12 +23,16 @@ int buf_ptr;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > input_queue;
 boost::lockfree::spsc_queue<char*, boost::lockfree::capacity<QUEUE_CAPACITY> > output_queue;
 
+std::clock_t gather_time, scatter_time;
+
 void signal_callback_handler(int signum) {
     std::cout << "Caught signal " << signum << std::endl;
 
     for (int i=0; i<NUM_BUFFERS; i++) {
 	delete [] buffers[i];
     }
+    std::cout << "Gather time: " << gather_time / (double) CLOCKS_PER_SEC << std::endl;
+    std::cout << "Scatter time: " << scatter_time / (double) CLOCKS_PER_SEC << std::endl;
 
     exit(signum);
 }
@@ -69,6 +74,7 @@ void gather(void) {
             std::cerr << "Accept failed" << std::endl;
         }
         else {
+	    std::clock_t start_time = std::clock();
             char* buffer = buffers[buf_ptr];
 	    buf_ptr = (buf_ptr + 1) % NUM_BUFFERS;
 	    int total_size = TILE_SIZE;
@@ -80,6 +86,7 @@ void gather(void) {
 		total_size -= n;
 	    }
 	    close(instance);
+	    gather_time += std::clock() - start_time;
             input_queue.push(buffer);
 	    num_gather++;
 	    //if (num_gather % 10 == 0)
@@ -113,9 +120,11 @@ void scatter(void) {
 
     int num_scatter = 0;
     while (true) {
+	while (output_queue.read_available() <= 0) ;
         char* buffer = NULL;
-        while (!output_queue.pop(buffer)) ;
+        output_queue.pop(buffer);
 
+	std::clock_t start_time = std::clock();
         int sock;
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             std::cerr << "Socket failed" << std::endl;
@@ -135,6 +144,7 @@ void scatter(void) {
 	    total_size -= n;
 	}
 	close(sock);
+	scatter_time += std::clock() - start_time;
 
 	num_scatter++;
 	//if (num_scatter % 10 == 0)
@@ -160,6 +170,9 @@ int main(int argc, char* argv[]) {
     }
     buf_ptr = 0;
 
+    gather_time = 0;
+    scatter_time = 0;
+
     boost::thread gather_thread(gather);
     boost::thread compute_thread(compute);
     boost::thread scatter_thread(scatter);
@@ -171,6 +184,8 @@ int main(int argc, char* argv[]) {
     for (i=0; i<NUM_BUFFERS; i++) {
 	delete [] buffers[i];
     }
+    std::cout << "Gather time: " << gather_time / (double) CLOCKS_PER_SEC << std::endl;
+    std::cout << "Scatter time: " << scatter_time / (double) CLOCKS_PER_SEC << std::endl;
 
     return 0;
 }
