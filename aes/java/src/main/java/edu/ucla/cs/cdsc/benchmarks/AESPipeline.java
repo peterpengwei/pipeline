@@ -7,53 +7,56 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.logging.Logger;
 
 /**
  * Created by Peter on 10/10/2017.
  */
 public class AESPipeline extends Pipeline {
-    private static final int TILE_SIZE = (1 << 24);
     private static final Logger logger = Logger.getLogger(AESPipeline.class.getName());
     private String inputData;
     private int size;
     private int repeatFactor;
+    private int TILE_SIZE;
     private byte[] finalData;
 
-    public AESPipeline() {
-        this("", 0, 0);
-    }
-
-    public AESPipeline(String inputData, int size, int repeatFactor) {
+    public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
         this.size = size;
         this.repeatFactor = repeatFactor;
+        this.TILE_SIZE = TILE_SIZE;
         this.finalData = new byte[size];
     }
 
     @Override
     public SendObject pack(PackObject obj) {
         AESPackObject aesPackObject = (AESPackObject) obj;
-        String input = aesPackObject.getData();
         int startIdx = aesPackObject.getStartIdx();
-        int endIdx = aesPackObject.getEndIdx();
-        byte[] data = new byte[TILE_SIZE];
-        int idx = 0;
-        for (int i=startIdx; i<endIdx; i++) {
-            data[idx++] = (byte) input.charAt(i);
-        }
-        return new AESSendObject(data);
+        String data = aesPackObject.getData();
+        byte[] output = new byte[TILE_SIZE];
+        for (int i = 0; i < TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
+        return new AESSendObject(output);
     }
 
     @Override
     public void send(SendObject obj) {
-        try (Socket socket = new Socket("localhost", 6070)) {
+        try {
+            Socket socket = new Socket();
+            SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
+            while (true) {
+                try {
+                    socket.connect(address);
+                    break;
+                } catch (Exception e) {
+                }
+            }
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
-            socket.getOutputStream().write(data);
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
-            //socket.close();
+            socket.getOutputStream().write(data);
+            socket.close();
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
