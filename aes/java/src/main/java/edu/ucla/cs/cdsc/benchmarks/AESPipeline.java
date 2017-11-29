@@ -14,7 +14,6 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.logging.Logger;
 
@@ -185,11 +184,11 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        for (int i=0; i<16; i++) {
-	    System.out.print(((int) finalData[i] & 255));
-	    System.out.print(" ");
-	}
-	System.out.println();
+        for (int i = 0; i < 16; i++) {
+            System.out.print(((int) finalData[i] & 255));
+            System.out.print(" ");
+        }
+        System.out.println();
 
         return new String(finalData);
     }
