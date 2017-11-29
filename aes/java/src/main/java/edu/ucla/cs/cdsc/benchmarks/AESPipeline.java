@@ -185,6 +185,12 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
+        for (int i=0; i<16; i++) {
+	    System.out.print(((int) finalData[i] & 255));
+	    System.out.print(" ");
+	}
+	System.out.println();
+
         return new String(finalData);
     }
 }
