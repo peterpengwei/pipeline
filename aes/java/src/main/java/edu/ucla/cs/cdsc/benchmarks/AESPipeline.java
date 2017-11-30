@@ -4,6 +4,7 @@ import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -69,7 +70,9 @@ public class AESPipeline extends Pipeline {
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
-            socket.getOutputStream().write(data);
+            OutputStream out = socket.getOutputStream();
+            out.write(data);
+            out.flush();
             socket.close();
             sendTransferTime += System.nanoTime() - startTime;
         } catch (Exception e) {
