@@ -53,8 +53,6 @@ public class AESPipeline extends Pipeline {
     public void send(SendObject obj) {
         try {
             long startTime = System.nanoTime();
-            Socket socket = new Socket("localhost", 6070);
-            /*
             Socket socket = new Socket();
             SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
             while (true) {
@@ -65,7 +63,6 @@ public class AESPipeline extends Pipeline {
                     logger.warning("Connection failed, try it again");
                 }
             }
-            */
             sendWaitTime += System.nanoTime() - startTime;
             startTime = System.nanoTime();
             byte[] data = ((AESSendObject) obj).getData();
