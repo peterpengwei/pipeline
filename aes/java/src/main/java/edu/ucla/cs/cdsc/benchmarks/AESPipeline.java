@@ -148,7 +148,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                     } else {
-                        while (numSendPacks - numRecvPacks >= 32) Thread.sleep(0, 100);
+                        while (numSendPacks - numRecvPacks >= 32) Thread.sleep(0, 100000);
                         send(obj);
                         numSends++;
                     }
