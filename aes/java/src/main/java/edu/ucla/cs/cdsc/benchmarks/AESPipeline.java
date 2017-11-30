@@ -26,6 +26,9 @@ public class AESPipeline extends Pipeline {
     private long sendTotalTime;
     private long recvTotalTime;
 
+    private long sendWaitTime;
+    private long sendTransferTime;
+
     private long numSends;
 
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
@@ -49,6 +52,7 @@ public class AESPipeline extends Pipeline {
     @Override
     public void send(SendObject obj) {
         try {
+            long startTime = System.nanoTime();
             Socket socket = new Socket();
             SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
             while (true) {
@@ -59,12 +63,15 @@ public class AESPipeline extends Pipeline {
                     logger.warning("Connection failed, try it again");
                 }
             }
+            sendWaitTime += System.nanoTime() - startTime;
+            startTime = System.nanoTime();
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
             socket.getOutputStream().write(data);
             socket.close();
+            sendTransferTime += System.nanoTime() - startTime;
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -163,6 +170,8 @@ public class AESPipeline extends Pipeline {
         };
 
         allStartTime = System.nanoTime();
+        sendWaitTime = 0;
+        sendTransferTime = 0;
         numSends = 0;
 
         //Thread splitThread = new Thread(splitter);
@@ -198,6 +207,8 @@ public class AESPipeline extends Pipeline {
         System.out.println("[Pack] " + packTotalTime / 1.0e9);
         System.out.println("[Send] " + sendTotalTime / 1.0e9);
         System.out.println("[Recv] " + recvTotalTime / 1.0e9);
+        System.out.println("[Wait] " + sendWaitTime / 1.0e9);
+        System.out.println("[Transfer] " + sendTransferTime / 1.0e9);
         System.out.println("Number of sending: " + numSends);
         //return stringBuilder.toString();
         for (int i = 0; i < 16; i++) {
