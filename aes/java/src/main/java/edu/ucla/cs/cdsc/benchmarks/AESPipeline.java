@@ -1,7 +1,6 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
 import edu.ucla.cs.cdsc.pipeline.*;
-import org.jctools.queues.SpscArrayQueue;
 import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.InputStream;
@@ -117,8 +116,7 @@ public class AESPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 int numOfTiles = size / TILE_SIZE;
-                //SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
-                SpscArrayQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
+                SpscLinkedQueue<SendObject> aesSendQueue = AESPipeline.getSendQueue();
                     for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
