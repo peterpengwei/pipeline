@@ -56,6 +56,7 @@ public class AESPipeline extends Pipeline {
                     socket.connect(address);
                     break;
                 } catch (Exception e) {
+                    logger.warning("Connection failed, try it again");
                 }
             }
             byte[] data = ((AESSendObject) obj).getData();
