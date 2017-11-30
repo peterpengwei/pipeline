@@ -26,6 +26,9 @@ public class AESPipeline extends Pipeline {
     private long sendTotalTime;
     private long recvTotalTime;
 
+    private long numSendPacks;
+    private long numRecvPacks;
+
     private long sendWaitTime;
     private long sendTransferTime;
 
@@ -113,6 +116,9 @@ public class AESPipeline extends Pipeline {
     public Object execute(Object input) {
         long overallStartTime = System.nanoTime();
 
+        numSendPacks = 0;
+        numRecvPacks = 0;
+
         Runnable packer = () -> {
             try {
                 int numOfTiles = size / TILE_SIZE;
@@ -122,6 +128,7 @@ public class AESPipeline extends Pipeline {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
                         while (!aesSendQueue.offer(sendObj)) ;
+                        numSendPacks++;
                     }
                 }
                 AESSendObject endNode = new AESSendObject(null);
@@ -141,6 +148,7 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                     } else {
+                        while (numSendPacks - numRecvPacks >= 32) Thread.sleep(0, 100);
                         send(obj);
                         numSends++;
                     }
@@ -159,6 +167,7 @@ public class AESPipeline extends Pipeline {
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESRecvObject curObj = (AESRecvObject) receive(server);
+                        numRecvPacks--;
                         System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
                         //logger.info("Recv queue full");
                     }
