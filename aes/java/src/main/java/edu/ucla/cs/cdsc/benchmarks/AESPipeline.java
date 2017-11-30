@@ -21,6 +21,11 @@ public class AESPipeline extends Pipeline {
     private int TILE_SIZE;
     private byte[] finalData;
 
+    private long allStartTime;
+    private long packTotalTime;
+    private long sendTotalTime;
+    private long recvTotalTime;
+
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
         this.size = size;
@@ -153,6 +158,8 @@ public class AESPipeline extends Pipeline {
             }
         };
 
+        allStartTime = System.nanoTime();
+
         //Thread splitThread = new Thread(splitter);
         //splitThread.start();
         Thread packThread = new Thread(packer);
@@ -169,8 +176,11 @@ public class AESPipeline extends Pipeline {
         try {
             //splitThread.join();
             packThread.join();
+            packTotalTime = System.nanoTime() - allStartTime;
             sendThread.join();
+            sendTotalTime = System.nanoTime() - allStartTime;
             recvThread.join();
+            recvTotalTime = System.nanoTime() - allStartTime;
             //unpackThread.join();
             //mergeThread.join();
         } catch (Exception e) {
@@ -180,6 +190,9 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
+        System.out.println("[Pack] " + packTotalTime / 1.0e9);
+        System.out.println("[Send] " + sendTotalTime / 1.0e9);
+        System.out.println("[Recv] " + recvTotalTime / 1.0e9);
         //return stringBuilder.toString();
         for (int i = 0; i < 16; i++) {
             System.out.print(((int) finalData[i] & 255));
