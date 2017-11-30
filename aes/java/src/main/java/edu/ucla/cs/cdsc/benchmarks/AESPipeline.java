@@ -71,12 +71,13 @@ public class AESPipeline extends Pipeline {
             //in.read(data, 0, TILE_SIZE);
             int n;
             InputStream in = incoming.getInputStream();
-            int offset = 0, length = TILE_SIZE;
-            while((n = in.read(data, offset, length)) > 0) {
-                if (n == length) break;
-                offset += n;
-                length -= n;
-            }
+            //int offset = 0, length = TILE_SIZE;
+            //while((n = in.read(data, offset, length)) > 0) {
+            //    if (n == length) break;
+            //    offset += n;
+            //    length -= n;
+            //}
+            in.read(data);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             incoming.close();
             return new AESRecvObject(data);
