@@ -126,6 +126,7 @@ public class AESPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
+                        while (numPendingJobs.get() >= 32) Thread.sleep(0, 10000);
                         while (!aesSendQueue.offer(sendObj)) ;
                         numPendingJobs.getAndIncrement();
                     }
@@ -147,7 +148,6 @@ public class AESPipeline extends Pipeline {
                     if (obj.getData() == null) {
                         done = true;
                     } else {
-                        while (numPendingJobs.get() >= 32) Thread.sleep(0, 100000);
                         send(obj);
                         numSends++;
                     }
