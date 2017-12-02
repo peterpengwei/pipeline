@@ -18,9 +18,9 @@ results[8].append("Compute")
 results[9].append("Scatter")
 
 
-size_idx = 12
+size_idx = int(sys.argv[1])
 
-while size_idx < 27:
+while size_idx <= int(sys.argv[2]):
     size = (1 << size_idx)
     if ((1 << 32) / size) > 8192:
         results[0].append(str(size * 8192 / 1048576))

@@ -4,9 +4,9 @@ import os
 import sys
 import time
 
-size_idx = 26
+size_idx = int(sys.argv[2])
 
-while size_idx >= 12:
+while size_idx >= int(sys.argv[1]):
     for i in xrange(0, 20):
         size = (1 << size_idx)
         repeat_str = str((1 << 32) / size)

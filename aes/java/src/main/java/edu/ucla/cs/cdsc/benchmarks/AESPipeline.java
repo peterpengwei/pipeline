@@ -22,17 +22,7 @@ public class AESPipeline extends Pipeline {
     private int TILE_SIZE;
     private byte[] finalData;
 
-    private long allStartTime;
-    private long packTotalTime;
-    private long sendTotalTime;
-    private long recvTotalTime;
-
     private AtomicInteger numPendingJobs;
-
-    private long sendWaitTime;
-    private long sendTransferTime;
-
-    private long numSends;
 
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
@@ -57,7 +47,6 @@ public class AESPipeline extends Pipeline {
     @Override
     public void send(SendObject obj) {
         try {
-            long startTime = System.nanoTime();
             Socket socket = new Socket();
             SocketAddress address = new InetSocketAddress("127.0.0.1", 6070);
             while (true) {
@@ -68,15 +57,12 @@ public class AESPipeline extends Pipeline {
                     logger.warning("Connection failed, try it again");
                 }
             }
-            sendWaitTime += System.nanoTime() - startTime;
-            startTime = System.nanoTime();
             byte[] data = ((AESSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
             socket.getOutputStream().write(data);
             socket.close();
-            sendTransferTime += System.nanoTime() - startTime;
         } catch (Exception e) {
             logger.severe("Caught exception: " + e);
             e.printStackTrace();
@@ -126,7 +112,7 @@ public class AESPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESPackObject packObj = new AESPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                         AESSendObject sendObj = (AESSendObject) pack(packObj);
-                        while (numPendingJobs.get() >= 32) Thread.sleep(0, 10000);
+                        while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                         while (!aesSendQueue.offer(sendObj)) ;
                         numPendingJobs.getAndIncrement();
                     }
@@ -149,7 +135,6 @@ public class AESPipeline extends Pipeline {
                         done = true;
                     } else {
                         send(obj);
-                        numSends++;
                     }
                 }
             } catch (Exception e) {
@@ -177,11 +162,6 @@ public class AESPipeline extends Pipeline {
             }
         };
 
-        allStartTime = System.nanoTime();
-        sendWaitTime = 0;
-        sendTransferTime = 0;
-        numSends = 0;
-
         //Thread splitThread = new Thread(splitter);
         //splitThread.start();
         Thread packThread = new Thread(packer);
@@ -198,11 +178,8 @@ public class AESPipeline extends Pipeline {
         try {
             //splitThread.join();
             packThread.join();
-            packTotalTime = System.nanoTime() - allStartTime;
             sendThread.join();
-            sendTotalTime = System.nanoTime() - allStartTime;
             recvThread.join();
-            recvTotalTime = System.nanoTime() - allStartTime;
             //unpackThread.join();
             //mergeThread.join();
         } catch (Exception e) {
@@ -212,12 +189,6 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        System.out.println("[Pack] " + packTotalTime / 1.0e9);
-        System.out.println("[Send] " + sendTotalTime / 1.0e9);
-        System.out.println("[Recv] " + recvTotalTime / 1.0e9);
-        System.out.println("[Wait] " + sendWaitTime / 1.0e9);
-        System.out.println("[Transfer] " + sendTransferTime / 1.0e9);
-        System.out.println("Number of sending: " + numSends);
         //return stringBuilder.toString();
         for (int i = 0; i < 16; i++) {
             System.out.print(((int) finalData[i] & 255));

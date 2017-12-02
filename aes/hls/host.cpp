@@ -24,7 +24,7 @@
 
 #define PORT 6070
 #define QUEUE_CAPACITY 8
-#define NUM_BUFFERS ((QUEUE_CAPACITY)*(2))
+#define NUM_BUFFERS (((QUEUE_CAPACITY)*(2)) + 2)
 
 int TILE_SIZE;
 
@@ -119,7 +119,7 @@ void gather(void) {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, 32) < 0) {
+    if (listen(server_fd, 64) < 0) {
         std::cerr << "Listen failed" << std::endl;
         exit(EXIT_FAILURE);
     }
