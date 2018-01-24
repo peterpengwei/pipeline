@@ -1,6 +1,7 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -9,9 +10,9 @@ import java.util.logging.Logger;
 /**
  * Created by Peter on 10/10/2017.
  */
-public class WordCountMain {
+public class NeedWunMain {
     public static void main(String[] args) {
-        Logger logger = Logger.getLogger(WordCountMain.class.getName());
+        Logger logger = Logger.getLogger(NeedWunMain.class.getName());
 
         // args[0]: path to input file
         // args[1]: word
@@ -23,7 +24,7 @@ public class WordCountMain {
             System.exit(1);
         }
         String inputFile = args[0];
-        //String word = args[1];
+        String outputFile = args[1];
         int size = Integer.parseInt(args[2]);
         int repeatFactor = Integer.parseInt(args[3]);
         int TILE_SIZE = Integer.parseInt(args[4]);
@@ -40,10 +41,17 @@ public class WordCountMain {
             System.exit(1);
         }
 
-        WordCountPipeline pipeline = new WordCountPipeline(inputData, size, repeatFactor, TILE_SIZE);
+        NeedWunPipeline pipeline = new NeedWunPipeline(inputData, size, repeatFactor, TILE_SIZE);
 
-        int outputData = (int) pipeline.execute(null);
+        String outputData = (String) pipeline.execute(null);
 
-        System.out.println("Word \"ease\" appears " + outputData + " times.");
+        try {
+            Path outputPath = Paths.get(outputFile);
+            Files.write(outputPath, outputData.getBytes());
+        } catch (Exception e) {
+            logger.severe("Caught exception: " + e);
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }

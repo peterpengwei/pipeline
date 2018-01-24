@@ -5,12 +5,12 @@ import edu.ucla.cs.cdsc.pipeline.PackObject;
 /**
  * Created by Peter on 10/11/2017.
  */
-public class WordCountPackObject extends PackObject {
+public class NeedWunPackObject extends PackObject {
     private String data;
     private int startIdx;
     private int endIdx;
 
-    public WordCountPackObject(String data, int startIdx, int endIdx) {
+    public NeedWunPackObject(String data, int startIdx, int endIdx) {
         this.data = data;
         this.startIdx = startIdx;
         this.endIdx = endIdx;

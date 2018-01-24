@@ -5,10 +5,10 @@ import edu.ucla.cs.cdsc.pipeline.UnpackObject;
 /**
  * Created by Peter on 10/16/2017.
  */
-public class WordCountUnpackObject extends UnpackObject {
+public class NeedWunUnpackObject extends UnpackObject {
     private String data;
 
-    public WordCountUnpackObject(String data) {
+    public NeedWunUnpackObject(String data) {
         this.data = data;
     }
 

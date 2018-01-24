@@ -16,36 +16,35 @@ import java.util.logging.Logger;
 /**
  * Created by Peter on 10/10/2017.
  */
-public class WordCountPipeline extends Pipeline {
-    private static final Logger logger = Logger.getLogger(WordCountPipeline.class.getName());
+public class NeedWunPipeline extends Pipeline {
+    private static final Logger logger = Logger.getLogger(NeedWunPipeline.class.getName());
     private String inputData;
     private int size;
     private int repeatFactor;
     private int TILE_SIZE;
-    private int wordCount;
+    private byte[] finalData;
 
-    private final String word = "ease";
 
     private AtomicInteger numPendingJobs;
 
-    public WordCountPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
+    public NeedWunPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE) {
         this.inputData = inputData;
         this.size = size;
         this.repeatFactor = repeatFactor;
         this.TILE_SIZE = TILE_SIZE;
-        this.wordCount = 0;
+        this.finalData = new byte[TILE_SIZE*2];
 
         numPendingJobs = new AtomicInteger(0);
     }
 
     @Override
     public SendObject pack(PackObject obj) {
-        WordCountPackObject wordCountPackObject = (WordCountPackObject) obj;
-        int startIdx = wordCountPackObject.getStartIdx();
-        String data = wordCountPackObject.getData();
+        NeedWunPackObject needWunPackObject = (NeedWunPackObject) obj;
+        int startIdx = needWunPackObject.getStartIdx();
+        String data = needWunPackObject.getData();
         byte[] output = new byte[TILE_SIZE];
         for (int i = 0; i < TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
-        return new WordCountSendObject(output);
+        return new NeedWunSendObject(output);
     }
 
     @Override
@@ -61,7 +60,7 @@ public class WordCountPipeline extends Pipeline {
                     logger.warning("Connection failed, try it again");
                 }
             }
-            byte[] data = ((WordCountSendObject) obj).getData();
+            byte[] data = ((NeedWunSendObject) obj).getData();
             //logger.info("Sending data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             //BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
             //out.write(data, 0, TILE_SIZE);
@@ -76,7 +75,7 @@ public class WordCountPipeline extends Pipeline {
     @Override
     public RecvObject receive(ServerSocket server) {
         try (Socket incoming = server.accept()) {
-            byte[] data = new byte[TILE_SIZE];
+            byte[] data = new byte[TILE_SIZE*2];
             //BufferedInputStream in = new BufferedInputStream(incoming.getInputStream());
             //in.read(data, 0, TILE_SIZE);
             int n;
@@ -90,18 +89,18 @@ public class WordCountPipeline extends Pipeline {
             in.read(data);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             incoming.close();
-            return new WordCountRecvObject(data);
+            return new NeedWunRecvObject(data);
         } catch (Exception e) {
             logger.severe("Caught exceptino: " + e);
             e.printStackTrace();
-            return new WordCountRecvObject(null);
+            return new NeedWunRecvObject(null);
         }
     }
 
     @Override
     public UnpackObject unpack(RecvObject obj) {
-        WordCountRecvObject wordCountRecvObject = (WordCountRecvObject) obj;
-        return new WordCountUnpackObject(new String(wordCountRecvObject.getData()));
+        NeedWunRecvObject needWunRecvObject = (NeedWunRecvObject) obj;
+        return new NeedWunUnpackObject(new String(needWunRecvObject.getData()));
     }
 
     @Override
@@ -111,17 +110,17 @@ public class WordCountPipeline extends Pipeline {
         Runnable packer = () -> {
             try {
                 int numOfTiles = size / TILE_SIZE;
-                SpscLinkedQueue<SendObject> aesSendQueue = WordCountPipeline.getSendQueue();
+                SpscLinkedQueue<SendObject> aesSendQueue = NeedWunPipeline.getSendQueue();
                     for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        WordCountPackObject packObj = new WordCountPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
-                        WordCountSendObject sendObj = (WordCountSendObject) pack(packObj);
+                        NeedWunPackObject packObj = new NeedWunPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
+                        NeedWunSendObject sendObj = (NeedWunSendObject) pack(packObj);
                         while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                         while (!aesSendQueue.offer(sendObj)) ;
                         numPendingJobs.getAndIncrement();
                     }
                 }
-                WordCountSendObject endNode = new WordCountSendObject(null);
+                NeedWunSendObject endNode = new NeedWunSendObject(null);
                 while (aesSendQueue.offer(endNode) == false) ;
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -133,8 +132,8 @@ public class WordCountPipeline extends Pipeline {
             try {
                 boolean done = false;
                 while (!done) {
-                    WordCountSendObject obj;
-                    while ((obj = (WordCountSendObject) WordCountPipeline.getSendQueue().poll()) == null) ;
+                    NeedWunSendObject obj;
+                    while ((obj = (NeedWunSendObject) NeedWunPipeline.getSendQueue().poll()) == null) ;
                     if (obj.getData() == null) {
                         done = true;
                     } else {
@@ -154,9 +153,9 @@ public class WordCountPipeline extends Pipeline {
                 int numOfTiles = size / TILE_SIZE;
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
-                        WordCountRecvObject curObj = (WordCountRecvObject) receive(server);
+                        NeedWunRecvObject curObj = (NeedWunRecvObject) receive(server);
                         numPendingJobs.getAndDecrement();
-                        wordCount += ByteBuffer.wrap(curObj.getData()).order(ByteOrder.LITTLE_ENDIAN).getInt();
+                        System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE*2, TILE_SIZE*2);
                         //logger.info("Recv queue full");
                     }
                 }
@@ -194,6 +193,11 @@ public class WordCountPipeline extends Pipeline {
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
         //return stringBuilder.toString();
-        return wordCount;
+        for (int i = 0; i < 16; i++) {
+            System.out.print(((char) finalData[i] & 255));
+            System.out.print(" ");
+        }
+        System.out.println();
+        return new String(finalData);
     }
 }
