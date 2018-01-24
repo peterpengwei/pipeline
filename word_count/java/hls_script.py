@@ -12,9 +12,9 @@ while size_idx >= int(sys.argv[1]):
         repeat_str = str((1 << 32) / size)
         if int(repeat_str) > 8192:
             repeat_str = str(8192)
-        cmd1 = "java -Xmx32g -jar target/aes-machsuite-1.0-SNAPSHOT-jar-with-dependencies.jar input.txt output.txt " + str(size) + " " + repeat_str + " " + str(size)
-        cmd2 = "with-sdaccel ../hls/bin/aes ../hls/aes-hw.xclbin " + str(size)
-        cmd3 = "pkill aes"
+        cmd1 = "java -Xmx32g -jar target/wordcount-machsuite-1.0-SNAPSHOT-jar-with-dependencies.jar input.txt ease " + str(size) + " " + repeat_str + " " + str(size)
+        cmd2 = "with-sdaccel ../hls/bin/workload ../hls/workload-hw.xclbin " + str(size)
+        cmd3 = "pkill workload"
         print cmd2
         os.system(cmd2 + " |& tee -a exp_" + str(size) + ".log &");
         time.sleep(30)
