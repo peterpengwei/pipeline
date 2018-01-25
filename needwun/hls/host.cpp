@@ -141,8 +141,8 @@ void gather(void) {
             std::cerr << "Accept failed" << std::endl;
         }
         else {
-            char* bufferA = (char *)clEnqueueMapBuffer(commands, contentsA[buf_ptr], CL_TRUE, CL_MAP_WRITE, 0, TILE_SIZE, 0, NULL, NULL, NULL);
-	    int total_size = TILE_SIZE;
+            char* bufferA = (char *)clEnqueueMapBuffer(commands, contentsA[buf_ptr], CL_TRUE, CL_MAP_WRITE, 0, TILE_SIZE/2, 0, NULL, NULL, NULL);
+	    int total_size = TILE_SIZE/2;
 	    int n;
 	    char* p = bufferA;
             while ((n = read(instance, p, total_size)) > 0) {
@@ -150,8 +150,8 @@ void gather(void) {
 		p += n;
 		total_size -= n;
 	    }
-            char* bufferB = (char *)clEnqueueMapBuffer(commands, contentsB[buf_ptr], CL_TRUE, CL_MAP_WRITE, 0, TILE_SIZE, 0, NULL, NULL, NULL);
-	    total_size = TILE_SIZE;
+            char* bufferB = (char *)clEnqueueMapBuffer(commands, contentsB[buf_ptr], CL_TRUE, CL_MAP_WRITE, 0, TILE_SIZE/2, 0, NULL, NULL, NULL);
+	    total_size = TILE_SIZE/2;
 	    p = bufferB;
             while ((n = read(instance, p, total_size)) > 0) {
 	        if (n >= total_size) break;
@@ -175,7 +175,7 @@ void compute(void) {
     //int num_compute = 0;
     while (true) {
 	int cur_idx;
-	int NUM_JOBS = TILE_SIZE/128;
+	int NUM_JOBS = TILE_SIZE/256;
 	timespec start_time = tic();
         while (!input_queue.pop(cur_idx)) ;
 	input_empty_time = sum(input_empty_time, toc(&start_time));
@@ -237,8 +237,8 @@ void scatter(void) {
 	start_time = tic();
 	int cur_idx;
         output_queue.pop(cur_idx);
-        char* bufferA = (char *)clEnqueueMapBuffer(commands, resultsA[cur_idx], CL_TRUE, CL_MAP_READ, 0, TILE_SIZE*2, 0, NULL, NULL, NULL);
-        char* bufferB = (char *)clEnqueueMapBuffer(commands, resultsB[cur_idx], CL_TRUE, CL_MAP_READ, 0, TILE_SIZE*2, 0, NULL, NULL, NULL);
+        char* bufferA = (char *)clEnqueueMapBuffer(commands, resultsA[cur_idx], CL_TRUE, CL_MAP_READ, 0, TILE_SIZE, 0, NULL, NULL, NULL);
+        char* bufferB = (char *)clEnqueueMapBuffer(commands, resultsB[cur_idx], CL_TRUE, CL_MAP_READ, 0, TILE_SIZE, 0, NULL, NULL, NULL);
         int sock;
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             std::cerr << "Socket failed" << std::endl;
@@ -250,7 +250,7 @@ void scatter(void) {
 
 	start_time = tic();
 	char* p = bufferA;
-	int total_size = TILE_SIZE*2;
+	int total_size = TILE_SIZE;
 	int n;
         while ((n = write(sock, bufferA, total_size)) > 0) {
 	    if (n >= total_size) break;
@@ -258,7 +258,7 @@ void scatter(void) {
 	    total_size -= n;
 	}
 	p = bufferB;
-	total_size = TILE_SIZE*2;
+	total_size = TILE_SIZE;
         while ((n = write(sock, bufferB, total_size)) > 0) {
 	    if (n >= total_size) break;
 	    p += n;
@@ -410,28 +410,28 @@ int main(int argc, char* argv[]) {
     for (i=0; i<NUM_BUFFERS; i++) {
       // Create the device buffer for our calculation
       //
-      contentsA[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE, NULL, NULL);
+      contentsA[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE/2, NULL, NULL);
       if (!contentsA[i])
       {
         printf("Error: Failed to allocate device memory!\n");
         printf("Test failed\n");
         return EXIT_FAILURE;
       }    
-      resultsA[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE*2, NULL, NULL);
+      resultsA[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE, NULL, NULL);
       if (!resultsA[i])
       {
         printf("Error: Failed to allocate device memory!\n");
         printf("Test failed\n");
         return EXIT_FAILURE;
       }    
-      contentsB[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE, NULL, NULL);
+      contentsB[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE/2, NULL, NULL);
       if (!contentsB[i])
       {
         printf("Error: Failed to allocate device memory!\n");
         printf("Test failed\n");
         return EXIT_FAILURE;
       }    
-      resultsB[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE*2, NULL, NULL);
+      resultsB[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE, NULL, NULL);
       if (!resultsB[i])
       {
         printf("Error: Failed to allocate device memory!\n");
