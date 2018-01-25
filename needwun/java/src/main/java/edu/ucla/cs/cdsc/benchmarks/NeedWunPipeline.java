@@ -43,7 +43,13 @@ public class NeedWunPipeline extends Pipeline {
         int startIdx = needWunPackObject.getStartIdx();
         String data = needWunPackObject.getData();
         byte[] output = new byte[TILE_SIZE];
-        for (int i = 0; i < TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
+        for (int group_idx = 0; group_idx < TILE_SIZE/256; group_idx++) {
+            for (int read_idx = 0; read_idx < 128; read_idx++) {
+                output[group_idx/64*64*128+read_idx*64+group_idx%64] = (byte) data.charAt(group_idx*256+read_idx);
+                output[TILE_SIZE/2+group_idx/64*64*128+read_idx*64+group_idx%64] = (byte) data.charAt(group_idx*256+128+read_idx);
+            }
+        }
+        //for (int i = 0; i < TILE_SIZE; i++) output[i] = (byte) data.charAt(startIdx++);
         return new NeedWunSendObject(output);
     }
 
