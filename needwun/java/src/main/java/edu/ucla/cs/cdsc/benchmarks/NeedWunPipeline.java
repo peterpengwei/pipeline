@@ -86,7 +86,8 @@ public class NeedWunPipeline extends Pipeline {
             //    offset += n;
             //    length -= n;
             //}
-            in.read(data);
+            in.read(data, 0, TILE_SIZE);
+            in.read(data, TILE_SIZE, TILE_SIZE);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             incoming.close();
             return new NeedWunRecvObject(data);
