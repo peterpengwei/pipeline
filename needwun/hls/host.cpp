@@ -120,7 +120,7 @@ void gather(void) {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, 64) < 0) {
+    if (listen(server_fd, 128) < 0) {
         std::cerr << "Listen failed" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -145,7 +145,9 @@ void gather(void) {
 	    int total_size = TILE_SIZE/2;
 	    int n;
 	    char* p = bufferA;
+	    //std::cout << "Gather start:" << std::endl;
             while ((n = read(instance, p, total_size)) > 0) {
+		//std::cout << "Gather A bytes " << n << std::endl;
 	        if (n >= total_size) break;
 		p += n;
 		total_size -= n;
@@ -154,10 +156,12 @@ void gather(void) {
 	    total_size = TILE_SIZE/2;
 	    p = bufferB;
             while ((n = read(instance, p, total_size)) > 0) {
+		//std::cout << "Gather B bytes " << n << std::endl;
 	        if (n >= total_size) break;
 		p += n;
 		total_size -= n;
 	    }
+	    //std::cout << "Gather end:" << std::endl;
 	    close(instance);
             clEnqueueUnmapMemObject(commands, contentsA[buf_ptr], bufferA, 0, NULL, NULL);
             clEnqueueUnmapMemObject(commands, contentsB[buf_ptr], bufferB, 0, NULL, NULL);
@@ -249,21 +253,23 @@ void scatter(void) {
 	connect_time = sum(connect_time, toc(&start_time));
 
 	start_time = tic();
-	char* p = bufferA;
-	int total_size = TILE_SIZE;
-	int n;
-        while ((n = write(sock, bufferA, total_size)) > 0) {
-	    if (n >= total_size) break;
-	    p += n;
-	    total_size -= n;
-	}
-	p = bufferB;
-	total_size = TILE_SIZE;
-        while ((n = write(sock, bufferB, total_size)) > 0) {
-	    if (n >= total_size) break;
-	    p += n;
-	    total_size -= n;
-	}
+	write(sock, bufferA, TILE_SIZE);
+	write(sock, bufferB, TILE_SIZE);
+	// char* p = bufferA;
+	// int total_size = TILE_SIZE;
+	// int n;
+        // while ((n = write(sock, bufferA, total_size)) > 0) {
+	//     if (n >= total_size) break;
+	//     p += n;
+	//     total_size -= n;
+	// }
+	// p = bufferB;
+	// total_size = TILE_SIZE;
+        // while ((n = write(sock, bufferB, total_size)) > 0) {
+	//     if (n >= total_size) break;
+	//     p += n;
+	//     total_size -= n;
+	// }
 	close(sock);
         clEnqueueUnmapMemObject(commands, resultsA[cur_idx], bufferA, 0, NULL, NULL);
         clEnqueueUnmapMemObject(commands, resultsB[cur_idx], bufferB, 0, NULL, NULL);

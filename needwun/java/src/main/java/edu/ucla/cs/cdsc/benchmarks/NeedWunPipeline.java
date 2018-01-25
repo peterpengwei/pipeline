@@ -80,14 +80,21 @@ public class NeedWunPipeline extends Pipeline {
             //in.read(data, 0, TILE_SIZE);
             int n;
             InputStream in = incoming.getInputStream();
-            //int offset = 0, length = TILE_SIZE;
-            //while((n = in.read(data, offset, length)) > 0) {
-            //    if (n == length) break;
-            //    offset += n;
-            //    length -= n;
-            //}
-            in.read(data, 0, TILE_SIZE);
-            in.read(data, TILE_SIZE, TILE_SIZE);
+            int offset = 0, length = TILE_SIZE;
+            while((n = in.read(data, offset, length)) > 0) {
+                if (n == length) break;
+                offset += n;
+                length -= n;
+            }
+            //in.read(data, 0, TILE_SIZE);
+            offset = TILE_SIZE;
+	    length = TILE_SIZE;
+            while((n = in.read(data, offset, length)) > 0) {
+                if (n == length) break;
+                offset += n;
+                length -= n;
+            }
+            //in.read(data, TILE_SIZE, TILE_SIZE);
             //logger.info("Received data with length " + data.length + ": " + (new String(data)).substring(0, 64));
             incoming.close();
             return new NeedWunRecvObject(data);
@@ -116,7 +123,7 @@ public class NeedWunPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         NeedWunPackObject packObj = new NeedWunPackObject(inputData, i * TILE_SIZE, (i+1) * TILE_SIZE);
                         NeedWunSendObject sendObj = (NeedWunSendObject) pack(packObj);
-                        while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
+                        while (numPendingJobs.get() >= 16) Thread.sleep(0, 1000);
                         while (!aesSendQueue.offer(sendObj)) ;
                         numPendingJobs.getAndIncrement();
                     }
