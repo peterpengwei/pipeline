@@ -193,8 +193,8 @@ public class NeedWunPipeline extends Pipeline {
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
         //return stringBuilder.toString();
-        for (int i = 0; i < 16; i++) {
-            System.out.print(((char) finalData[i] & 255));
+        for (int i = 0; i < 256; i++) {
+            System.out.print((char) (finalData[i] & 255));
             System.out.print(" ");
         }
         System.out.println();
