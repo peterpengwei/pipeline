@@ -274,14 +274,14 @@ class PackRunnable implements Runnable {
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
                     if (pipeline.getNumPendingJobs().get() >= 16) {
-                        logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
+                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
                         long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
                         Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                     else {
-                        logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
+                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
                         pipeline.getNumPendingJobs().getAndIncrement();
                     }
