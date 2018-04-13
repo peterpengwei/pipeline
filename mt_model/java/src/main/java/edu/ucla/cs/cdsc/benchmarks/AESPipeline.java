@@ -135,6 +135,18 @@ public class AESPipeline extends Pipeline {
                 server.setReuseAddress(true);
                 server.bind(new InetSocketAddress(9520));
                 int numOfTiles = size / TILE_SIZE;
+
+                int repeatIdx = 0, tileIdx = 0;
+                for (int i=0; i<repeatFactor*numOfTiles*numPackThreads) {
+                    AESRecvObject curObj = (AESRecvObject) receive(server);
+                    numPendingJobs.getAndDecrement();
+                    if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
+                        System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
+                        tileIdx++;
+                    }
+                    logger.info("Recv thread: " + curObj.getData()[0]);
+                }
+
                 for (int j = 0; j < repeatFactor; j++) {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESRecvObject curObj = (AESRecvObject) receive(server);
