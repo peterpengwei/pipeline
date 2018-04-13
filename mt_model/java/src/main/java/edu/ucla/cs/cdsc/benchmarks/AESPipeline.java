@@ -12,6 +12,10 @@ import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 /**
  * Created by Peter on 10/10/2017.
  */
@@ -262,6 +266,27 @@ class PackRunnable implements Runnable {
         this.pipeline = pipeline;
     }
 
+    private static final String key = "Bar12345Bar12345"; // 128 bit key
+    private static final String initVector = "RandomInitVector"; // 16 bytes IV
+
+    public static byte[] encrypt(byte[] value) {
+        try {
+            IvParameterSpec iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
+            SecretKeySpec skeySpec = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
+
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+
+            byte[] encrypted = cipher.doFinal(value);
+
+            return encrypted;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return null;
+    }
+
     @Override
     public void run() {
         try {
@@ -276,8 +301,10 @@ class PackRunnable implements Runnable {
                     if (pipeline.getNumPendingJobs().get() >= 16) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
-                        long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
-                        Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
+                        //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
+                        //Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
+                        byte[] encryptedData = encrypt(sendObj.getData());
+                        encryptedData[0] = (byte) threadID;
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                     else {
