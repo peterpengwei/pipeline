@@ -109,13 +109,16 @@ public class AESPipeline extends Pipeline {
         long overallStartTime = System.nanoTime();
 
         Runnable sender = () -> {
+            int numPendingThreads = numPackThreads;
             try {
                 boolean done = false;
                 while (!done) {
                     AESSendObject obj;
                     while ((obj = (AESSendObject) AESPipeline.getSendQueue().poll()) == null) ;
                     if (obj.getData() == null) {
-                        done = true;
+                        numPendingThreads--;
+                        if (numPendingThreads == 0)
+                            done = true;
                     } else {
                         logger.info("Send thread: " + obj.getData()[0]);
                         send(obj);
@@ -136,8 +139,11 @@ public class AESPipeline extends Pipeline {
                     for (int i = 0; i < numOfTiles; i++) {
                         AESRecvObject curObj = (AESRecvObject) receive(server);
                         numPendingJobs.getAndDecrement();
-                        System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
-                        //logger.info("Recv queue full");
+                        if (curObj.getData()[0] == 0)
+                            System.arraycopy(curObj.getData(), 0, finalData, i*TILE_SIZE, TILE_SIZE);
+                        else
+                            i--;
+                        logger.info("Recv thread: " + curObj.getData()[0]);
                     }
                 }
             } catch (Exception e) {
