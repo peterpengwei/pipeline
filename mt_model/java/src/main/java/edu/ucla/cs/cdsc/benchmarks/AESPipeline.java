@@ -25,6 +25,7 @@ public class AESPipeline extends Pipeline {
     private byte[] finalData;
 
     private AtomicInteger numPendingJobs;
+    private AtomicInteger numOverallSockets;
 
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE, int numPackThreads) {
         this.inputData = inputData;
@@ -35,6 +36,7 @@ public class AESPipeline extends Pipeline {
         this.finalData = new byte[size];
 
         numPendingJobs = new AtomicInteger(0);
+        numOverallSockets = new AtomicInteger(repeatFactor * numPackThreads * (size / TILE_SIZE));
     }
 
     @Override
@@ -143,6 +145,7 @@ public class AESPipeline extends Pipeline {
                         System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
                         tileIdx++;
                     }
+                    if (numOverallSockets.get() == 0) break;
                 }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -238,6 +241,14 @@ public class AESPipeline extends Pipeline {
     public void setNumPendingJobs(AtomicInteger numPendingJobs) {
         this.numPendingJobs = numPendingJobs;
     }
+
+    public AtomicInteger getNumOverallSockets() {
+        return numOverallSockets;
+    }
+
+    public void setNumOverallSockets(AtomicInteger numOverallSockets) {
+        this.numOverallSockets = numOverallSockets;
+    }
 }
 
 class PackRunnable implements Runnable {
@@ -260,10 +271,19 @@ class PackRunnable implements Runnable {
                     AESPackObject packObj = new AESPackObject(pipeline.getInputData(),
                             i * pipeline.getTILE_SIZE(), (i+1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
-                    while (pipeline.getNumPendingJobs().get() >= 32) ;
+                    //while (pipeline.getNumPendingJobs().get() >= 32) ;
+                    if (pipeline.getNumPendingJobs().get() >= 32) {
+                        logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
+                        pipeline.getNumOverallSockets().getAndDecrement();
+                        long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
+                        Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
+                    }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
-                    while (!aesSendQueue.offer(sendObj)) ;
-                    pipeline.getNumPendingJobs().getAndIncrement();
+                    else {
+                        logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
+                        while (!aesSendQueue.offer(sendObj)) ;
+                        pipeline.getNumPendingJobs().getAndIncrement();
+                    }
                 }
             }
             AESSendObject endNode = new AESSendObject(null);
