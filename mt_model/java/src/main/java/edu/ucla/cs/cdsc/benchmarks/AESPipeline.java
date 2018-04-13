@@ -120,7 +120,6 @@ public class AESPipeline extends Pipeline {
                         if (numPendingThreads == 0)
                             done = true;
                     } else {
-                        logger.info("Send thread: " + obj.getData()[0]);
                         send(obj);
                     }
                 }
@@ -144,7 +143,6 @@ public class AESPipeline extends Pipeline {
                         System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
                         tileIdx++;
                     }
-                    logger.info("Recv thread: " + curObj.getData()[0]);
                 }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -262,7 +260,6 @@ class PackRunnable implements Runnable {
                     AESPackObject packObj = new AESPackObject(pipeline.getInputData(),
                             i * pipeline.getTILE_SIZE(), (i+1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
-                    logger.info("Pack Thread " + threadID + ": " + sendObj.getData()[0]);
                     while (pipeline.getNumPendingJobs().get() >= 32) ;
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                     while (!aesSendQueue.offer(sendObj)) ;

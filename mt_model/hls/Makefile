@@ -10,7 +10,7 @@ HW_XCLBIN ?= $(APP)-hw.xclbin
 KERNEL_SRCS ?= aes.cpp
 KERNEL_NAME ?= $(APP)
 HOST_SRCS ?= host.cpp
-HOST_ARGS ?= "1048576"
+HOST_ARGS ?= 1048576 6400 1 1
 HOST_BIN ?= $(APP)
 
 SRC ?= .

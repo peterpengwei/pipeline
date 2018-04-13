@@ -458,14 +458,14 @@ int main(int argc, char* argv[]) {
     for (i=0; i<NUM_BUFFERS; i++) {
       // Create the device buffer for our calculation
       //
-      contents[i] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, TILE_SIZE*combine_rate, NULL, NULL);
+      contents[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE*combine_rate, NULL, NULL);
       if (!contents[i])
       {
         printf("Error: Failed to allocate device memory!\n");
         printf("Test failed\n");
         return EXIT_FAILURE;
       }    
-      results[i] = clCreateBuffer(context, CL_MEM_READ_ONLY, TILE_SIZE*combine_rate, NULL, NULL);
+      results[i] = clCreateBuffer(context, CL_MEM_READ_WRITE, TILE_SIZE*combine_rate, NULL, NULL);
       if (!results[i])
       {
         printf("Error: Failed to allocate device memory!\n");
