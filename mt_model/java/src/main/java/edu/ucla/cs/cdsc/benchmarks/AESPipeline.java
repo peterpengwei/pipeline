@@ -141,6 +141,7 @@ public class AESPipeline extends Pipeline {
                 for (int i=0; i<repeatFactor*numOfTiles*numPackThreads; i++) {
                     AESRecvObject curObj = (AESRecvObject) receive(server);
                     numPendingJobs.getAndDecrement();
+                    numOverallSockets.getAndDecrement();
                     if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
                         System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
                         tileIdx++;
@@ -272,7 +273,7 @@ class PackRunnable implements Runnable {
                             i * pipeline.getTILE_SIZE(), (i+1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
-                    if (pipeline.getNumPendingJobs().get() >= 32) {
+                    if (pipeline.getNumPendingJobs().get() >= 16) {
                         logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
                         long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
