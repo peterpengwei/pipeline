@@ -114,10 +114,10 @@ public class AESPipeline extends Pipeline {
                 while (!done) {
                     AESSendObject obj;
                     while ((obj = (AESSendObject) AESPipeline.getSendQueue().poll()) == null) ;
-                    logger.info("Send thread: " + obj.getData()[0]);
                     if (obj.getData() == null) {
                         done = true;
                     } else {
+                        logger.info("Send thread: " + obj.getData()[0]);
                         send(obj);
                     }
                 }
