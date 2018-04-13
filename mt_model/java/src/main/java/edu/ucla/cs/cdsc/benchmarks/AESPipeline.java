@@ -31,6 +31,8 @@ public class AESPipeline extends Pipeline {
     private AtomicInteger numPendingJobs;
     private AtomicInteger numOverallSockets;
 
+    private int numFPGAJobs;
+
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE, int numPackThreads) {
         this.inputData = inputData;
         this.size = size;
@@ -41,6 +43,7 @@ public class AESPipeline extends Pipeline {
 
         numPendingJobs = new AtomicInteger(0);
         numOverallSockets = new AtomicInteger(repeatFactor * numPackThreads * (size / TILE_SIZE));
+        numFPGAJobs = 0;
     }
 
     @Override
@@ -126,6 +129,7 @@ public class AESPipeline extends Pipeline {
                         if (numPendingThreads == 0)
                             done = true;
                     } else {
+                        numFPGAJobs++;
                         send(obj);
                     }
                 }
@@ -190,6 +194,8 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
+        int numOverallJobs = numPackThreads * (size/TILE_SIZE) * repeatFactor;
+        System.out.println("[CPU Jobs] " + (numOverallJobs-numFPGAJobs) + ", [FPGA Jobs] " + numFPGAJobs);
         //return stringBuilder.toString();
         for (int i = 0; i < 16; i++) {
             System.out.print(((int) finalData[i] & 255));
