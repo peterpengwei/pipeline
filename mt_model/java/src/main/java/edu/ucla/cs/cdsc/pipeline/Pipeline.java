@@ -1,8 +1,7 @@
 package edu.ucla.cs.cdsc.pipeline;
 
 import jdk.nashorn.internal.ir.Block;
-import org.jctools.queues.QueueFactory;
-import org.jctools.queues.SpscLinkedQueue;
+import org.jctools.queues.*;
 import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.RandomAccessFile;
@@ -21,7 +20,8 @@ public abstract class Pipeline {
     private static final int UNPACK_QUEUE_SIZE = 32;
 
     private static SpscLinkedQueue<PackObject> packQueue = new SpscLinkedQueue<>();
-    private static SpscLinkedQueue<SendObject> sendQueue = new SpscLinkedQueue<>();
+    //private static SpscLinkedQueue<SendObject> sendQueue = new SpscLinkedQueue<>();
+    private static MpscLinkedQueue<SendObject> sendQueue = MpscLinkedQueue.newMpscLinkedQueue();
     private static SpscLinkedQueue<RecvObject> recvQueue = new SpscLinkedQueue<>();
     private static SpscLinkedQueue<UnpackObject> unpackQueue = new SpscLinkedQueue<>();
 
@@ -29,7 +29,7 @@ public abstract class Pipeline {
         return packQueue;
     }
 
-    public static SpscLinkedQueue<SendObject> getSendQueue() {
+    public static MpscLinkedQueue<SendObject> getSendQueue() {
         return sendQueue;
     }
 

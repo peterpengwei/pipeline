@@ -18,7 +18,8 @@ public class AESMain {
         // args[2]: file size
         // args[3]: repeat factor
         // args[4]: tile size
-        if (args.length != 5) {
+        // args[5]: number of pack threads
+        if (args.length != 6) {
             logger.severe("Invalid command-line format");
             System.exit(1);
         }
@@ -27,6 +28,7 @@ public class AESMain {
         int size = Integer.parseInt(args[2]);
         int repeatFactor = Integer.parseInt(args[3]);
         int TILE_SIZE = Integer.parseInt(args[4]);
+        int numPackThreads = Integer.parseInt(args[5]);
 
         String inputData = "";
         try {
@@ -40,7 +42,7 @@ public class AESMain {
             System.exit(1);
         }
 
-        AESPipeline pipeline = new AESPipeline(inputData, size, repeatFactor, TILE_SIZE);
+        AESPipeline pipeline = new AESPipeline(inputData, size, repeatFactor, TILE_SIZE, numPackThreads);
 
         String outputData = (String) pipeline.execute(null);
 

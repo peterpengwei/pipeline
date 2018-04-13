@@ -9,11 +9,13 @@ public class AESPackObject extends PackObject {
     private String data;
     private int startIdx;
     private int endIdx;
+    private int threadID;
 
-    public AESPackObject(String data, int startIdx, int endIdx) {
+    public AESPackObject(String data, int startIdx, int endIdx, int threadID) {
         this.data = data;
         this.startIdx = startIdx;
         this.endIdx = endIdx;
+        this.threadID = threadID;
     }
 
     public int getEndIdx() {
@@ -38,5 +40,13 @@ public class AESPackObject extends PackObject {
 
     public void setData(String data) {
         this.data = data;
+    }
+
+    public int getThreadID() {
+        return threadID;
+    }
+
+    public void setThreadID(int threadID) {
+        this.threadID = threadID;
     }
 }
