@@ -137,7 +137,7 @@ public class AESPipeline extends Pipeline {
                 int numOfTiles = size / TILE_SIZE;
 
                 int repeatIdx = 0, tileIdx = 0;
-                for (int i=0; i<repeatFactor*numOfTiles*numPackThreads) {
+                for (int i=0; i<repeatFactor*numOfTiles*numPackThreads; i++) {
                     AESRecvObject curObj = (AESRecvObject) receive(server);
                     numPendingJobs.getAndDecrement();
                     if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
