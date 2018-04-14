@@ -93,7 +93,7 @@ public class AESPipeline extends Pipeline {
             int n;
             InputStream in = incoming.getInputStream();
             int offset = 0, length = TILE_SIZE;
-            while((n = in.read(data, offset, length)) > 0) {
+            while ((n = in.read(data, offset, length)) > 0) {
                 if (n == length) break;
                 offset += n;
                 length -= n;
@@ -132,7 +132,7 @@ public class AESPipeline extends Pipeline {
                             done = true;
                     } else {
                         numFPGAJobs++;
-			numSentoutJobs.getAndIncrement();
+                        numSentoutJobs.getAndIncrement();
                         send(obj);
                     }
                 }
@@ -149,10 +149,10 @@ public class AESPipeline extends Pipeline {
                 int numOfTiles = size / TILE_SIZE;
 
                 int tileIdx = 0;
-                for (int i=0; i<repeatFactor*numOfTiles*numPackThreads; i++) {
-		    while (numSentoutJobs.get() == 0) {
-		        if (numOverallSockets.get() == 0) return;
-		    }
+                for (int i = 0; i < repeatFactor * numOfTiles * numPackThreads; i++) {
+                    while (numSentoutJobs.get() == 0) {
+                        if (numOverallSockets.get() == 0) return;
+                    }
                     AESRecvObject curObj = (AESRecvObject) receive(server);
                     numPendingJobs.getAndDecrement();
                     numOverallSockets.getAndDecrement();
@@ -170,7 +170,7 @@ public class AESPipeline extends Pipeline {
         //Thread splitThread = new Thread(splitter);
         //splitThread.start();
         Thread[] packThreads = new Thread[numPackThreads];
-        for (int i=0; i<numPackThreads; i++) {
+        for (int i = 0; i < numPackThreads; i++) {
             packThreads[i] = new Thread(new PackRunnable(i, this));
             packThreads[i].start();
         }
@@ -185,7 +185,7 @@ public class AESPipeline extends Pipeline {
 
         try {
             //splitThread.join();
-            for (int i=0; i<numPackThreads; i++) {
+            for (int i = 0; i < numPackThreads; i++) {
                 packThreads[i].join();
             }
             sendThread.join();
@@ -199,8 +199,8 @@ public class AESPipeline extends Pipeline {
 
         long overallTime = System.nanoTime() - overallStartTime;
         System.out.println("[Overall] " + overallTime / 1.0e9);
-        int numOverallJobs = numPackThreads * (size/TILE_SIZE) * repeatFactor;
-        System.out.println("[CPU Jobs] " + (numOverallJobs-numFPGAJobs) + ", [FPGA Jobs] " + numFPGAJobs);
+        int numOverallJobs = numPackThreads * (size / TILE_SIZE) * repeatFactor;
+        System.out.println("[CPU Jobs] " + (numOverallJobs - numFPGAJobs) + ", [FPGA Jobs] " + numFPGAJobs);
         //return stringBuilder.toString();
         for (int i = 0; i < 16; i++) {
             System.out.print(((int) finalData[i] & 255));
@@ -306,16 +306,17 @@ class PackRunnable implements Runnable {
             for (int j = 0; j < pipeline.getRepeatFactor(); j++) {
                 for (int i = 0; i < numOfTiles; i++) {
                     AESPackObject packObj = new AESPackObject(pipeline.getInputData(),
-                            i * pipeline.getTILE_SIZE(), (i+1) * pipeline.getTILE_SIZE(), threadID);
+                            i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
                     //if (pipeline.getNumPendingJobs().get() >= 0) {
-		    if (true) {
+                    if (true) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
                         //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
                         //Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
-                        byte[] encryptedData = encrypt(sendObj.getData());
+                        //byte[] encryptedData = encrypt(sendObj.getData());
+                        byte[] encryptedData = AESEncrypt.encrypt(sendObj.getData());
                         encryptedData[0] = (byte) threadID;
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
