@@ -30,6 +30,7 @@ public class AESPipeline extends Pipeline {
 
     private AtomicInteger numPendingJobs;
     private AtomicInteger numOverallSockets;
+    private AtomicInteger numSentoutJobs;
 
     private int numFPGAJobs;
 
@@ -43,6 +44,7 @@ public class AESPipeline extends Pipeline {
 
         numPendingJobs = new AtomicInteger(0);
         numOverallSockets = new AtomicInteger(repeatFactor * numPackThreads * (size / TILE_SIZE));
+        numSentoutJobs = new AtomicInteger(0);
         numFPGAJobs = 0;
     }
 
@@ -130,6 +132,7 @@ public class AESPipeline extends Pipeline {
                             done = true;
                     } else {
                         numFPGAJobs++;
+			numSentoutJobs.getAndIncrement();
                         send(obj);
                     }
                 }
@@ -147,6 +150,9 @@ public class AESPipeline extends Pipeline {
 
                 int tileIdx = 0;
                 for (int i=0; i<repeatFactor*numOfTiles*numPackThreads; i++) {
+		    while (numSentoutJobs.get() == 0) {
+		        if (numOverallSockets.get() == 0) return;
+		    }
                     AESRecvObject curObj = (AESRecvObject) receive(server);
                     numPendingJobs.getAndDecrement();
                     numOverallSockets.getAndDecrement();
@@ -154,7 +160,6 @@ public class AESPipeline extends Pipeline {
                         System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
                         tileIdx++;
                     }
-                    if (numOverallSockets.get() == 0) break;
                 }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -304,7 +309,8 @@ class PackRunnable implements Runnable {
                             i * pipeline.getTILE_SIZE(), (i+1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
-                    if (pipeline.getNumPendingJobs().get() >= 16) {
+                    //if (pipeline.getNumPendingJobs().get() >= 0) {
+		    if (true) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
                         //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
