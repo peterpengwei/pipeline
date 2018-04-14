@@ -289,6 +289,7 @@ class PackRunnable implements Runnable {
             cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
 
             byte[] encrypted = cipher.doFinal(value);
+            for (int i=0; i<15; i++) encrypted = cipher.doFinal(encrypted);
 
             return encrypted;
         } catch (Exception ex) {
@@ -315,8 +316,7 @@ class PackRunnable implements Runnable {
                         pipeline.getNumOverallSockets().getAndDecrement();
                         //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
                         //Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
-                        //byte[] encryptedData = encrypt(sendObj.getData());
-                        byte[] encryptedData = AESEncrypt.encrypt(sendObj.getData());
+                        byte[] encryptedData = encrypt(sendObj.getData());
                         encryptedData[0] = (byte) threadID;
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
