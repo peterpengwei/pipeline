@@ -149,17 +149,23 @@ public class AESPipeline extends Pipeline {
                 int numOfTiles = size / TILE_SIZE;
 
                 int tileIdx = 0;
-                for (int i = 0; i < repeatFactor * numOfTiles * numPackThreads; i++) {
-                    while (numSentoutJobs.get() == 0) {
-                        if (numOverallSockets.get() == 0) return;
-                    }
-                    AESRecvObject curObj = (AESRecvObject) receive(server);
-                    numPendingJobs.getAndDecrement();
-                    numOverallSockets.getAndDecrement();
-                    if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
-                        System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
-                        tileIdx++;
-                    }
+                //for (int i = 0; i < repeatFactor * numOfTiles * numPackThreads; i++) {
+		AESRecvObject curObj;
+                while (true) {
+		    curObj = null;
+		    if (numSentoutJobs.get() > 0) {
+		        curObj = (AESRecvObject) receive(server);
+			numSentoutJobs.getAndDecrement();
+		    }
+		    if (curObj != null) {
+                        numPendingJobs.getAndDecrement();
+                        numOverallSockets.getAndDecrement();
+                        if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
+                            System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
+                            tileIdx++;
+                        }
+		    }
+                    if (numOverallSockets.get() == 0) break;
                 }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -265,6 +271,10 @@ public class AESPipeline extends Pipeline {
     public void setNumOverallSockets(AtomicInteger numOverallSockets) {
         this.numOverallSockets = numOverallSockets;
     }
+
+    public int getNumPackThreads() {
+        return numPackThreads;
+    }
 }
 
 class PackRunnable implements Runnable {
@@ -289,7 +299,7 @@ class PackRunnable implements Runnable {
             cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
 
             byte[] encrypted = cipher.doFinal(value);
-            for (int i=0; i<15; i++) encrypted = cipher.doFinal(encrypted);
+            for (int i=0; i<25; i++) encrypted = cipher.doFinal(encrypted);
 
             return encrypted;
         } catch (Exception ex) {
@@ -310,8 +320,7 @@ class PackRunnable implements Runnable {
                             i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
-                    //if (pipeline.getNumPendingJobs().get() >= 0) {
-                    if (true) {
+                    if (pipeline.getNumPendingJobs().get() >= 32) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         pipeline.getNumOverallSockets().getAndDecrement();
                         //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
