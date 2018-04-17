@@ -2,7 +2,6 @@ package edu.ucla.cs.cdsc.benchmarks;
 
 import edu.ucla.cs.cdsc.pipeline.*;
 import org.jctools.queues.MpscLinkedQueue;
-import org.jctools.queues.SpscLinkedQueue;
 
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -28,10 +27,8 @@ public class AESPipeline extends Pipeline {
     private int numPackThreads;
     private byte[] finalData;
 
+    private AtomicInteger numJobs;
     private AtomicInteger numPendingJobs;
-    private AtomicInteger numOverallSockets;
-    private AtomicInteger numSentoutJobs;
-
     private int numFPGAJobs;
 
     public AESPipeline(String inputData, int size, int repeatFactor, int TILE_SIZE, int numPackThreads) {
@@ -42,9 +39,8 @@ public class AESPipeline extends Pipeline {
         this.numPackThreads = numPackThreads;
         this.finalData = new byte[size];
 
+        numJobs = new AtomicInteger(repeatFactor * numPackThreads * (size / TILE_SIZE));
         numPendingJobs = new AtomicInteger(0);
-        numOverallSockets = new AtomicInteger(repeatFactor * numPackThreads * (size / TILE_SIZE));
-        numSentoutJobs = new AtomicInteger(0);
         numFPGAJobs = 0;
     }
 
@@ -132,7 +128,7 @@ public class AESPipeline extends Pipeline {
                             done = true;
                     } else {
                         numFPGAJobs++;
-                        numSentoutJobs.getAndIncrement();
+                        numPendingJobs.getAndDecrement();
                         send(obj);
                     }
                 }
@@ -150,22 +146,17 @@ public class AESPipeline extends Pipeline {
 
                 int tileIdx = 0;
                 //for (int i = 0; i < repeatFactor * numOfTiles * numPackThreads; i++) {
-		AESRecvObject curObj;
                 while (true) {
-		    curObj = null;
-		    if (numSentoutJobs.get() > 0) {
-		        curObj = (AESRecvObject) receive(server);
-			numSentoutJobs.getAndDecrement();
-		    }
-		    if (curObj != null) {
+                    if (numPendingJobs.get() > 0) {
+                        AESRecvObject curObj = (AESRecvObject) receive(server);
                         numPendingJobs.getAndDecrement();
-                        numOverallSockets.getAndDecrement();
+                        numJobs.getAndDecrement();
                         if (curObj.getData()[0] == 0 && tileIdx < numOfTiles) {
                             System.arraycopy(curObj.getData(), 0, finalData, tileIdx * TILE_SIZE, TILE_SIZE);
                             tileIdx++;
                         }
-		    }
-                    if (numOverallSockets.get() == 0) break;
+                    }
+                    if (numJobs.get() == 0) break;
                 }
             } catch (Exception e) {
                 logger.severe("Caught exception: " + e);
@@ -264,12 +255,12 @@ public class AESPipeline extends Pipeline {
         this.numPendingJobs = numPendingJobs;
     }
 
-    public AtomicInteger getNumOverallSockets() {
-        return numOverallSockets;
+    public AtomicInteger getNumJobs() {
+        return numJobs;
     }
 
-    public void setNumOverallSockets(AtomicInteger numOverallSockets) {
-        this.numOverallSockets = numOverallSockets;
+    public void setNumJobs(AtomicInteger numJobs) {
+        this.numJobs = numJobs;
     }
 
     public int getNumPackThreads() {
@@ -278,17 +269,15 @@ public class AESPipeline extends Pipeline {
 }
 
 class PackRunnable implements Runnable {
+    private static final Logger logger = Logger.getLogger(PackRunnable.class.getName());
+    private static final String key = "Bar12345Bar12345"; // 128 bit key
+    private static final String initVector = "RandomInitVector"; // 16 bytes IV
     private int threadID;
     private AESPipeline pipeline;
-    private static final Logger logger = Logger.getLogger(PackRunnable.class.getName());
-
     public PackRunnable(int threadID, AESPipeline pipeline) {
         this.threadID = threadID;
         this.pipeline = pipeline;
     }
-
-    private static final String key = "Bar12345Bar12345"; // 128 bit key
-    private static final String initVector = "RandomInitVector"; // 16 bytes IV
 
     public static byte[] encrypt(byte[] value) {
         try {
@@ -299,7 +288,7 @@ class PackRunnable implements Runnable {
             cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
 
             byte[] encrypted = cipher.doFinal(value);
-            for (int i=0; i<25; i++) encrypted = cipher.doFinal(encrypted);
+            for (int i = 0; i < 25; i++) encrypted = cipher.doFinal(encrypted);
 
             return encrypted;
         } catch (Exception ex) {
@@ -322,17 +311,16 @@ class PackRunnable implements Runnable {
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
                     if (pipeline.getNumPendingJobs().get() >= 32) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
-                        pipeline.getNumOverallSockets().getAndDecrement();
                         //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
                         //Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
                         byte[] encryptedData = encrypt(sendObj.getData());
                         encryptedData[0] = (byte) threadID;
+                        pipeline.getNumJobs().getAndDecrement();
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
                     else {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
-                        pipeline.getNumPendingJobs().getAndIncrement();
                     }
                 }
             }
