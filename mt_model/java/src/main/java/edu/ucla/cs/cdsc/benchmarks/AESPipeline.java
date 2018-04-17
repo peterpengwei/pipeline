@@ -128,7 +128,7 @@ public class AESPipeline extends Pipeline {
                             done = true;
                     } else {
                         numFPGAJobs++;
-                        numPendingJobs.getAndDecrement();
+                        numPendingJobs.getAndIncrement();
                         send(obj);
                     }
                 }
@@ -147,7 +147,7 @@ public class AESPipeline extends Pipeline {
                 int tileIdx = 0;
                 //for (int i = 0; i < repeatFactor * numOfTiles * numPackThreads; i++) {
                 while (true) {
-                    logger.info("numJobs = " + numJobs.get() + ", numPendingJobs = " + numPendingJobs.get());
+                    //logger.info("numJobs = " + numJobs.get() + ", numPendingJobs = " + numPendingJobs.get());
                     if (numPendingJobs.get() > 0) {
                         AESRecvObject curObj = (AESRecvObject) receive(server);
                         numPendingJobs.getAndDecrement();
