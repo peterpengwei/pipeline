@@ -312,10 +312,10 @@ class PackRunnable implements Runnable {
                     //while (pipeline.getNumPendingJobs().get() >= 32) ;
                     if (pipeline.getNumPendingJobs().get() >= 32) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
-                        //long timeToSleep = (long) (pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
-                        //Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
-                        byte[] encryptedData = encrypt(sendObj.getData());
-                        encryptedData[0] = (byte) threadID;
+                        long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 23));
+                        Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
+                        //byte[] encryptedData = encrypt(sendObj.getData());
+                        //encryptedData[0] = (byte) threadID;
                         pipeline.getNumJobs().getAndDecrement();
                     }
                     //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
