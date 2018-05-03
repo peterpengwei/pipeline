@@ -309,9 +309,10 @@ class PackRunnable implements Runnable {
                     AESPackObject packObj = new AESPackObject(pipeline.getInputData(),
                             i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
-                    while (pipeline.getNumPendingJobs().get() >= 32) ;
 
-                    /*
+                    // while (pipeline.getNumPendingJobs().get() >= 32) ;
+                    // while (!aesSendQueue.offer(sendObj)) ;
+
                     if (pipeline.getNumPendingJobs().get() >= 32) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
@@ -325,7 +326,6 @@ class PackRunnable implements Runnable {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
                     }
-                    */
 
                     /*
                     if (pipeline.getNumPendingJobs().get() >= 32) {
