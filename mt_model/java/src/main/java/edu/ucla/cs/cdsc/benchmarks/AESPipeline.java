@@ -310,13 +310,14 @@ class PackRunnable implements Runnable {
                             i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
 
+                    /*
                     int numPendingJobs = pipeline.getNumPendingJobs().getAndIncrement();
                     while (numPendingJobs >= 32) {
                         numPendingJobs = pipeline.getNumPendingJobs().get();
                     }
                     while (!aesSendQueue.offer(sendObj)) ;
+                    */
 
-                    /*
                     boolean isFPGAReady = false;
                     int numPendingJobs = pipeline.getNumPendingJobs().getAndIncrement();
                     if (numPendingJobs >= 32) {
@@ -333,7 +334,6 @@ class PackRunnable implements Runnable {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
                     }
-                    */
                 }
             }
             AESSendObject endNode = new AESSendObject(null);
