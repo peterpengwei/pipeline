@@ -128,7 +128,7 @@ public class AESPipeline extends Pipeline {
                             done = true;
                     } else {
                         numFPGAJobs++;
-                        numPendingJobs.getAndIncrement();
+                        //numPendingJobs.getAndIncrement();
                         send(obj);
                     }
                 }
@@ -310,10 +310,17 @@ class PackRunnable implements Runnable {
                             i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
 
-                    // while (pipeline.getNumPendingJobs().get() >= 32) ;
-                    // while (!aesSendQueue.offer(sendObj)) ;
+                    int numPendingJobs = pipeline.getNumPendingJobs().getAndIncrement();
+                    while (numPendingJobs >= 32) {
+                        numPendingJobs = pipeline.getNumPendingJobs().get();
+                    }
+                    while (!aesSendQueue.offer(sendObj)) ;
 
-                    if (pipeline.getNumPendingJobs().get() >= 32) {
+                    /*
+                    boolean isFPGAReady = false;
+                    int numPendingJobs = pipeline.getNumPendingJobs().getAndIncrement();
+                    if (numPendingJobs >= 32) {
+                        pipeline.getNumPendingJobs().getAndDecrement();
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
                         Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
@@ -326,23 +333,7 @@ class PackRunnable implements Runnable {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
                     }
-
-                    /*
-                    if (pipeline.getNumPendingJobs().get() >= 32) {
-                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
-                        long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 23));
-                        Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
-                        //byte[] encryptedData = encrypt(sendObj.getData());
-                        //encryptedData[0] = (byte) threadID;
-                        pipeline.getNumJobs().getAndDecrement();
-                    }
-                    //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
-                    else {
-                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
-                        while (!aesSendQueue.offer(sendObj)) ;
-                    }
                     */
-
                 }
             }
             AESSendObject endNode = new AESSendObject(null);
