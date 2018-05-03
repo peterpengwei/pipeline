@@ -309,7 +309,25 @@ class PackRunnable implements Runnable {
                     AESPackObject packObj = new AESPackObject(pipeline.getInputData(),
                             i * pipeline.getTILE_SIZE(), (i + 1) * pipeline.getTILE_SIZE(), threadID);
                     AESSendObject sendObj = (AESSendObject) pipeline.pack(packObj);
-                    //while (pipeline.getNumPendingJobs().get() >= 32) ;
+                    while (pipeline.getNumPendingJobs().get() >= 32) ;
+
+                    /*
+                    if (pipeline.getNumPendingJobs().get() >= 32) {
+                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
+                        long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 27));
+                        Thread.sleep((int) (timeToSleep/1e6), (int) timeToSleep % 1000000);
+                        //byte[] encryptedData = encrypt(sendObj.getData());
+                        //encryptedData[0] = (byte) threadID;
+                        pipeline.getNumJobs().getAndDecrement();
+                    }
+                    //while (numPendingJobs.get() >= 64) Thread.sleep(0, 1000);
+                    else {
+                        //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
+                        while (!aesSendQueue.offer(sendObj)) ;
+                    }
+                    */
+
+                    /*
                     if (pipeline.getNumPendingJobs().get() >= 32) {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on CPU");
                         long timeToSleep = (long) ((long) pipeline.getTILE_SIZE() * 1e9 / (1 << 23));
@@ -323,6 +341,8 @@ class PackRunnable implements Runnable {
                         //logger.info("Pack Thread " + threadID + ": " + (j*numOfTiles+i) + "-th task on FPGA");
                         while (!aesSendQueue.offer(sendObj)) ;
                     }
+                    */
+
                 }
             }
             AESSendObject endNode = new AESSendObject(null);
