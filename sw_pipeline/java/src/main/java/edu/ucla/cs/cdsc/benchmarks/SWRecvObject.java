@@ -1,14 +1,14 @@
 package edu.ucla.cs.cdsc.benchmarks;
 
-import edu.ucla.cs.cdsc.pipeline.SendObject;
+import edu.ucla.cs.cdsc.pipeline.RecvObject;
 
 /**
  * Created by Peter on 10/16/2017.
  */
-public class AESSendObject extends SendObject {
+public class SWRecvObject extends RecvObject {
     private byte[] data;
 
-    public AESSendObject(byte[] data) {
+    public SWRecvObject(byte[] data) {
         this.data = data;
     }
 
